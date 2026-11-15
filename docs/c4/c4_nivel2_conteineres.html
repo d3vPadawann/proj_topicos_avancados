@@ -1,0 +1,197 @@
+<!DOCTYPE html><html lang="pt-BR"><head><meta charset="utf-8"><style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body {
+  font-family: 'Segoe UI', Inter, Roboto, Arial, sans-serif;
+  background: #ffffff;
+  color: #1e293b;
+  width: 1400px;
+  height: 860px;
+  padding: 24px 32px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+}
+.header {
+  border-bottom: 2px solid #cbd5e1;
+  padding-bottom: 10px;
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+}
+.header h1 { font-size: 21px; color: #0f172a; font-weight: 800; }
+.header span { font-size: 13px; color: #475569; font-weight: 600; }
+.canvas {
+  flex: 1;
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-around;
+  padding: 14px 0;
+}
+.row {
+  display: flex;
+  justify-content: space-around;
+  align-items: center;
+  gap: 18px;
+}
+.box {
+  border-radius: 10px;
+  padding: 12px 15px;
+  text-align: center;
+  box-shadow: 0 4px 10px rgba(15, 23, 42, 0.08);
+  width: 270px;
+}
+.person {
+  background: #08427b;
+  color: #ffffff;
+  border: 2px solid #052e56;
+}
+.system-main {
+  background: #1168bd;
+  color: #ffffff;
+  border: 3px solid #0b4884;
+  width: 390px;
+}
+.container-box {
+  background: #2b7cd3;
+  color: #ffffff;
+  border: 2px solid #1b5ca3;
+}
+.db-box {
+  background: #1d4ed8;
+  color: #ffffff;
+  border: 2px solid #1e3a8a;
+  border-radius: 18px;
+}
+.ext-system {
+  background: #64748b;
+  color: #ffffff;
+  border: 2px dashed #334155;
+}
+.component-box {
+  background: #eff6ff;
+  color: #0f172a;
+  border: 2px solid #3b82f6;
+  width: 245px;
+}
+.code-box {
+  background: #f8fafc;
+  color: #0f172a;
+  border: 1.5px solid #475569;
+  text-align: left;
+  font-size: 11px;
+  width: 255px;
+  padding: 9px 11px;
+}
+.code-box .cls-title {
+  font-weight: 800;
+  font-size: 12.5px;
+  color: #1e3a8a;
+  border-bottom: 1px solid #cbd5e1;
+  padding-bottom: 4px;
+  margin-bottom: 5px;
+  text-align: center;
+}
+.tag {
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.6px;
+  opacity: 0.9;
+  margin-bottom: 4px;
+  display: block;
+  font-weight: 700;
+}
+.title { font-size: 14.5px; font-weight: 800; margin-bottom: 5px; }
+.desc { font-size: 11.5px; line-height: 1.35; opacity: 0.95; }
+.arrow-row {
+  text-align: center;
+  font-size: 11.5px;
+  font-weight: 700;
+  color: #334155;
+  padding: 2px 0;
+}
+.boundary {
+  border: 2.5px dashed #475569;
+  border-radius: 14px;
+  padding: 16px;
+  background: #f8fafc;
+}
+.boundary-title {
+  font-size: 13px;
+  font-weight: 800;
+  color: #1e293b;
+  margin-bottom: 10px;
+  text-transform: uppercase;
+}
+.legend {
+  border-top: 1px solid #e2e8f0;
+  padding-top: 8px;
+  display: flex;
+  justify-content: space-between;
+  font-size: 11px;
+  color: #64748b;
+}
+</style></head><body>
+    <div class="header">
+      <h1>Modelo C4 — Nível 2: Diagrama de Contêineres (Container Diagram)</h1>
+      <span>Arquitetura em 3 Camadas (Seção 2.5) • Java 21 + Spring Boot 3 + React + H2/PostgreSQL</span>
+    </div>
+    <div class="canvas">
+      <div class="row">
+        <div class="box person" style="width:320px;">
+          <span class="tag">[Usuários do Núcleo Familiar & Stakeholders]</span>
+          <div class="title">Titular, Membro, Auditor e Sysadmin</div>
+          <div class="desc">Acessam a interface responsiva (Mobile-First a Ultrawide — RNF-005) pelo navegador do computador ou smartphone.</div>
+        </div>
+      </div>
+
+      <div class="arrow-row">▼ HTTPS / Navegador Web + Web Speech API (Voz para Texto) ▼</div>
+
+      <div class="boundary">
+        <div class="boundary-title"> Fronteira do Sistema FinFamily (Aplicação Monolítica Modular em 3 Camadas)</div>
+        <div class="row" style="margin-bottom: 16px;">
+          <div class="box container-box" style="width: 420px;">
+            <span class="tag">[Container: Single-Page Application • React 18 + Vite + TailwindCSS]</span>
+            <div class="title">Interface Web Responsiva (Front-End SPA)</div>
+            <div class="desc">Entrega o Painel de Dashboards interativos, Caixa do Assistente Conversacional com IA (com card de confirmação RN-006), gestão de contas, transações, revisão de CSV, orçamentos e investimentos.</div>
+          </div>
+          <div style="font-weight:800; font-size:12px; color:#1e3a8a;">
+            ── Chamadas API REST JSON ──►<br/>
+            (Bearer JWT + Criptografia)
+          </div>
+          <div class="box container-box" style="width: 460px; background:#0f4c81;">
+            <span class="tag">[Container: Application Server • Java 21 + Spring Boot 3.3.5]</span>
+            <div class="title">Servidor de Aplicação e API REST (Back-End)</div>
+            <div class="desc">Concentra todas as regras de negócio (RN-001 a RN-006), autenticação Spring Security + BCrypt + JWT, criptografia AES-256 (RNF-003), cache em memória (@EnableCaching RNF-002), motor de conciliação CSV e agendador @Scheduled.</div>
+          </div>
+        </div>
+
+        <div class="row">
+          <div class="box db-box" style="width: 420px;">
+            <span class="tag">[Container: Relational Database • H2 Persistente / PostgreSQL]</span>
+            <div class="title">Banco de Dados Relacional (Spring Data JPA / Hibernate)</div>
+            <div class="desc">Armazena usuários, grupos familiares, membros, contas (com dados sensíveis em AES-256), árvore de categorias, tags, transações, orçamentos, ativos, operações e logs técnicos.</div>
+          </div>
+          <div class="box db-box" style="width: 420px; background:#065f46; border-color:#064e3b;">
+            <span class="tag">[Container: Disaster Recovery Storage • JSON Snapshots]</span>
+            <div class="title">Repositório de Backups Diários (RNF-007) & Exportador OpenPDF / POI</div>
+            <div class="desc">Armazena backups automáticos diários com retenção mínima de 30 dias e gera relatórios binários em PDF, Excel (.xlsx) e CSV (RF-010).</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="arrow-row">▼ Requisição HTTP POST (Timeout &lt; 3s — Seção 11.3) ▼</div>
+
+      <div class="row">
+        <div class="box ext-system" style="width: 520px;">
+          <span class="tag">[External System: LLM Service • HTTP JSON]</span>
+          <div class="title">Serviço Externo de IA (Google Gemini API / Ollama Local)</div>
+          <div class="desc">Recebe exclusivamente o texto do comando, a data atual e os nomes das contas/categorias para extrair a intenção em JSON.</div>
+        </div>
+      </div>
+    </div>
+    <div class="legend">
+      <span>Notação: Modelo C4 — Nível 2: Contêineres</span>
+      <span>Tecnologias: Java 21 LTS, Spring Boot 3.3.5, React 18, TailwindCSS, H2/PostgreSQL, OpenPDF, Apache POI</span>
+    </div>
+    </body></html>

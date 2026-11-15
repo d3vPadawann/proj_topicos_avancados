@@ -1,0 +1,262 @@
+<!DOCTYPE html><html lang="pt-BR"><head><meta charset="utf-8"><style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body {
+  font-family: 'Segoe UI', Inter, Roboto, Arial, sans-serif;
+  background: #ffffff;
+  color: #1e293b;
+  width: 1400px;
+  height: 860px;
+  padding: 24px 32px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+}
+.header {
+  border-bottom: 2px solid #cbd5e1;
+  padding-bottom: 10px;
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+}
+.header h1 { font-size: 21px; color: #0f172a; font-weight: 800; }
+.header span { font-size: 13px; color: #475569; font-weight: 600; }
+.canvas {
+  flex: 1;
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-around;
+  padding: 14px 0;
+}
+.row {
+  display: flex;
+  justify-content: space-around;
+  align-items: center;
+  gap: 18px;
+}
+.box {
+  border-radius: 10px;
+  padding: 12px 15px;
+  text-align: center;
+  box-shadow: 0 4px 10px rgba(15, 23, 42, 0.08);
+  width: 270px;
+}
+.person {
+  background: #08427b;
+  color: #ffffff;
+  border: 2px solid #052e56;
+}
+.system-main {
+  background: #1168bd;
+  color: #ffffff;
+  border: 3px solid #0b4884;
+  width: 390px;
+}
+.container-box {
+  background: #2b7cd3;
+  color: #ffffff;
+  border: 2px solid #1b5ca3;
+}
+.db-box {
+  background: #1d4ed8;
+  color: #ffffff;
+  border: 2px solid #1e3a8a;
+  border-radius: 18px;
+}
+.ext-system {
+  background: #64748b;
+  color: #ffffff;
+  border: 2px dashed #334155;
+}
+.component-box {
+  background: #eff6ff;
+  color: #0f172a;
+  border: 2px solid #3b82f6;
+  width: 245px;
+}
+.code-box {
+  background: #f8fafc;
+  color: #0f172a;
+  border: 1.5px solid #475569;
+  text-align: left;
+  font-size: 11px;
+  width: 255px;
+  padding: 9px 11px;
+}
+.code-box .cls-title {
+  font-weight: 800;
+  font-size: 12.5px;
+  color: #1e3a8a;
+  border-bottom: 1px solid #cbd5e1;
+  padding-bottom: 4px;
+  margin-bottom: 5px;
+  text-align: center;
+}
+.tag {
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.6px;
+  opacity: 0.9;
+  margin-bottom: 4px;
+  display: block;
+  font-weight: 700;
+}
+.title { font-size: 14.5px; font-weight: 800; margin-bottom: 5px; }
+.desc { font-size: 11.5px; line-height: 1.35; opacity: 0.95; }
+.arrow-row {
+  text-align: center;
+  font-size: 11.5px;
+  font-weight: 700;
+  color: #334155;
+  padding: 2px 0;
+}
+.boundary {
+  border: 2.5px dashed #475569;
+  border-radius: 14px;
+  padding: 16px;
+  background: #f8fafc;
+}
+.boundary-title {
+  font-size: 13px;
+  font-weight: 800;
+  color: #1e293b;
+  margin-bottom: 10px;
+  text-transform: uppercase;
+}
+.legend {
+  border-top: 1px solid #e2e8f0;
+  padding-top: 8px;
+  display: flex;
+  justify-content: space-between;
+  font-size: 11px;
+  color: #64748b;
+}
+</style></head><body>
+    <div class="header">
+      <h1>Modelo C4 — Nível 4: Diagrama de Código e Classes de Domínio Implementadas (Code Diagram)</h1>
+      <span>Mapeamento Fiel à Figura 5 da Unidade I (Pacote br.ucsal.finfamily.domain.model)</span>
+    </div>
+    <div class="canvas">
+      <div class="row">
+        <div class="box code-box">
+          <div class="cls-title">«entity» Usuario</div>
+          <div>- id: Long | nome: String</div>
+          <div>- email: String | senhaHash: String</div>
+          <div>- documentoSensivel: String [AES-256]</div>
+          <div>- ativo: Boolean | papelPrincipal: PapelFamiliar</div>
+          <hr style="margin:4px 0"/>
+          <div>+ autenticar(email, senhaOk): Boolean</div>
+        </div>
+        <div class="box code-box">
+          <div class="cls-title">«entity» GrupoFamiliar</div>
+          <div>- id: Long | nome: String</div>
+          <div>- titular: Usuario</div>
+          <div>- membros: List&lt;Membro&gt;</div>
+          <div>- contas: List&lt;Conta&gt;</div>
+          <hr style="margin:4px 0"/>
+          <div>+ convidar(email, papel): Membro</div>
+          <div>+ patrimonioLiquido(): BigDecimal [RN-001]</div>
+        </div>
+        <div class="box code-box">
+          <div class="cls-title">«entity» Membro</div>
+          <div>- id: Long | emailConvidado: String</div>
+          <div>- papel: PapelFamiliar [TITULAR|MEMBRO|AUDITOR]</div>
+          <div>- status: StatusMembro [CONVIDADO|ATIVO|SUSPENSO]</div>
+          <hr style="margin:4px 0"/>
+          <div>+ aceitarConvite(): void</div>
+          <div>+ recusarConvite() / suspender(): void</div>
+        </div>
+        <div class="box code-box">
+          <div class="cls-title">«entity» Conta</div>
+          <div>- id: Long | nome: String</div>
+          <div>- tipo: TipoConta [4 tipos OE1]</div>
+          <div>- saldo: BigDecimal | privada: Boolean</div>
+          <div>- diaVencimento: Integer</div>
+          <hr style="margin:4px 0"/>
+          <div>+ podeSerExcluida(): Boolean [RN-002]</div>
+          <div>+ importarCSV(lista, hashes): int [RF-005]</div>
+        </div>
+      </div>
+
+      <div class="row">
+        <div class="box code-box">
+          <div class="cls-title">«entity» Transacao</div>
+          <div>- id: Long | descricao: String</div>
+          <div>- valor: BigDecimal | data: LocalDate</div>
+          <div>- tipo: TipoTransacao | parcela: Integer</div>
+          <div>- totalParcelas: Integer | recorrente: Boolean</div>
+          <div>- hashConciliacao: String [SHA-256 OE2]</div>
+          <hr style="margin:4px 0"/>
+          <div>+ gerarParcelas(): List&lt;Transacao&gt; [RN-003]</div>
+        </div>
+        <div class="box code-box">
+          <div class="cls-title">«entity» Categoria & Tag</div>
+          <div>- id: Long | nome: String</div>
+          <div>- pai: Categoria (Árvore RF-004)</div>
+          <div>- filhas: List&lt;Categoria&gt;</div>
+          <div>- tags: Set&lt;Tag&gt;</div>
+          <hr style="margin:4px 0"/>
+          <div>+ subcategorias(): List&lt;Categoria&gt;</div>
+          <div>+ getCaminhoCompleto(): String</div>
+        </div>
+        <div class="box code-box">
+          <div class="cls-title">«entity» Orcamento</div>
+          <div>- id: Long | mes: String (YearMonth)</div>
+          <div>- valorPlanejado: BigDecimal</div>
+          <div>- valorGasto: BigDecimal</div>
+          <div>- alerta80Disparado / alerta100Disparado</div>
+          <hr style="margin:4px 0"/>
+          <div>+ percentualGasto(): BigDecimal</div>
+          <div>+ verificarAlerta(): List&lt;Notificacao&gt; [RN-004]</div>
+        </div>
+        <div class="box code-box">
+          <div class="cls-title">«entity» Notificacao</div>
+          <div>- id: Long | titulo: String</div>
+          <div>- mensagem: String</div>
+          <div>- tipo: TipoNotificacao</div>
+          <div>- lida: Boolean | criadaEm: LocalDateTime</div>
+          <hr style="margin:4px 0"/>
+          <div>+ marcarComoLida(): void [RF-011]</div>
+        </div>
+      </div>
+
+      <div class="row">
+        <div class="box code-box">
+          <div class="cls-title">«entity» Ativo</div>
+          <div>- ticker: String [PK - ex: PETR4, HGLG11]</div>
+          <div>- nome: String | setor: String</div>
+          <div>- precoAtual: BigDecimal</div>
+          <div>- tipoAtivo: String [ACAO|FII|ETF|RENDA_FIXA]</div>
+        </div>
+        <div class="box code-box">
+          <div class="cls-title">«entity» OperacaoInvestimento</div>
+          <div>- id: Long | tipo: TipoOperacao</div>
+          <div>- quantidade: BigDecimal | preco: BigDecimal</div>
+          <div>- data: LocalDate | ativo: Ativo</div>
+          <div>- transacaoGerada: Transacao [RN-005]</div>
+          <hr style="margin:4px 0"/>
+          <div>+ valorTotal(): BigDecimal [RF-008]</div>
+        </div>
+        <div class="box code-box">
+          <div class="cls-title">«value object» Comando</div>
+          <div>- intencao: String [registrar | consultar]</div>
+          <div>- valor: BigDecimal | descricao: String</div>
+          <div>- data: LocalDate | conta: String</div>
+          <div>- categoria: String | periodo: String</div>
+          <div>- requerConfirmacao: Boolean [RN-006]</div>
+        </div>
+        <div class="box code-box">
+          <div class="cls-title">«service» AssistenteIAService</div>
+          <div>- urlApi: String | timeoutMs: 2800</div>
+          <hr style="margin:4px 0"/>
+          <div>+ interpretar(grupoId, texto): Comando</div>
+          <div>+ executar(grupoId, cmd, confirmado): Map</div>
+          <div>+ executarBateria50ComandosTeste(): Map</div>
+        </div>
+      </div>
+    </div>
+    <div class="legend">
+      <span>Notação: Modelo C4 — Nível 4: Código / Classes UML Implementadas</span>
+      <span>100% de Rastreabilidade com o Diagrama de Classes da Unidade I (Figura 5)</span>
+    </div>
+    </body></html>

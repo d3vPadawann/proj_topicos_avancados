@@ -1,0 +1,207 @@
+<!DOCTYPE html><html lang="pt-BR"><head><meta charset="utf-8"><style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body {
+  font-family: 'Segoe UI', Inter, Roboto, Arial, sans-serif;
+  background: #ffffff;
+  color: #1e293b;
+  width: 1400px;
+  height: 860px;
+  padding: 24px 32px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+}
+.header {
+  border-bottom: 2px solid #cbd5e1;
+  padding-bottom: 10px;
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+}
+.header h1 { font-size: 21px; color: #0f172a; font-weight: 800; }
+.header span { font-size: 13px; color: #475569; font-weight: 600; }
+.canvas {
+  flex: 1;
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-around;
+  padding: 14px 0;
+}
+.row {
+  display: flex;
+  justify-content: space-around;
+  align-items: center;
+  gap: 18px;
+}
+.box {
+  border-radius: 10px;
+  padding: 12px 15px;
+  text-align: center;
+  box-shadow: 0 4px 10px rgba(15, 23, 42, 0.08);
+  width: 270px;
+}
+.person {
+  background: #08427b;
+  color: #ffffff;
+  border: 2px solid #052e56;
+}
+.system-main {
+  background: #1168bd;
+  color: #ffffff;
+  border: 3px solid #0b4884;
+  width: 390px;
+}
+.container-box {
+  background: #2b7cd3;
+  color: #ffffff;
+  border: 2px solid #1b5ca3;
+}
+.db-box {
+  background: #1d4ed8;
+  color: #ffffff;
+  border: 2px solid #1e3a8a;
+  border-radius: 18px;
+}
+.ext-system {
+  background: #64748b;
+  color: #ffffff;
+  border: 2px dashed #334155;
+}
+.component-box {
+  background: #eff6ff;
+  color: #0f172a;
+  border: 2px solid #3b82f6;
+  width: 245px;
+}
+.code-box {
+  background: #f8fafc;
+  color: #0f172a;
+  border: 1.5px solid #475569;
+  text-align: left;
+  font-size: 11px;
+  width: 255px;
+  padding: 9px 11px;
+}
+.code-box .cls-title {
+  font-weight: 800;
+  font-size: 12.5px;
+  color: #1e3a8a;
+  border-bottom: 1px solid #cbd5e1;
+  padding-bottom: 4px;
+  margin-bottom: 5px;
+  text-align: center;
+}
+.tag {
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.6px;
+  opacity: 0.9;
+  margin-bottom: 4px;
+  display: block;
+  font-weight: 700;
+}
+.title { font-size: 14.5px; font-weight: 800; margin-bottom: 5px; }
+.desc { font-size: 11.5px; line-height: 1.35; opacity: 0.95; }
+.arrow-row {
+  text-align: center;
+  font-size: 11.5px;
+  font-weight: 700;
+  color: #334155;
+  padding: 2px 0;
+}
+.boundary {
+  border: 2.5px dashed #475569;
+  border-radius: 14px;
+  padding: 16px;
+  background: #f8fafc;
+}
+.boundary-title {
+  font-size: 13px;
+  font-weight: 800;
+  color: #1e293b;
+  margin-bottom: 10px;
+  text-transform: uppercase;
+}
+.legend {
+  border-top: 1px solid #e2e8f0;
+  padding-top: 8px;
+  display: flex;
+  justify-content: space-between;
+  font-size: 11px;
+  color: #64748b;
+}
+</style></head><body>
+    <div class="header">
+      <h1>Modelo C4 — Nível 3: Diagrama de Componentes do Servidor de Aplicação (Back-End)</h1>
+      <span>Pacotes br.ucsal.finfamily.controller, .service, .security e .repository</span>
+    </div>
+    <div class="canvas">
+      <div class="boundary">
+        <div class="boundary-title">Camada de Apresentação REST & Filtro de Segurança (Controllers & Security)</div>
+        <div class="row">
+          <div class="box component-box">
+            <span class="tag">[RestController]</span>
+            <div class="title">AuthController</div>
+            <div class="desc">Endpoints /api/auth/login, /register, portabilidade LGPD e direito ao esquecimento (RF-001, RNF-004).</div>
+          </div>
+          <div class="box component-box">
+            <span class="tag">[RestController]</span>
+            <div class="title">FinFamilyController</div>
+            <div class="desc">Endpoints de Contas, Transações, CSV, Orçamentos, Grupo, Investimentos, IA, Exportação e Sysadmin (RF-002 a RF-012).</div>
+          </div>
+          <div class="box component-box">
+            <span class="tag">[Security Component]</span>
+            <div class="title">JwtAuthenticationFilter & JwtTokenProvider</div>
+            <div class="desc">Autenticação Stateless JWT e controle de perfil Titular, Membro, Auditor e Sysadmin (OE4).</div>
+          </div>
+          <div class="box component-box">
+            <span class="tag">[JPA AttributeConverter]</span>
+            <div class="title">AesAttributeConverter</div>
+            <div class="desc">Criptografia simétrica AES-256-GCM transparente para documentos e códigos de conta no banco (RNF-003).</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="arrow-row">▼ Invocação Transacional de Regras de Negócio (@Transactional) ▼</div>
+
+      <div class="boundary">
+        <div class="boundary-title">Camada de Serviços e Regras de Negócio (Domain Services)</div>
+        <div class="row">
+          <div class="box component-box" style="background:#eef2ff; border-color:#4f46e5;">
+            <span class="tag">[Service • Core Business]</span>
+            <div class="title">FinanceiroService</div>
+            <div class="desc">Implementa RN-001 (privacidade), RN-002 (exclusão saldo 0), RN-003 (parcelamento), RN-004 (alertas 80%/100%), RN-005 (proventos) e conciliação CSV SHA-256.</div>
+          </div>
+          <div class="box component-box" style="background:#eef2ff; border-color:#4f46e5;">
+            <span class="tag">[Service • AI & NLP]</span>
+            <div class="title">AssistenteIAService</div>
+            <div class="desc">Implementa interpretar() e executar() (Figura 5), aplica RN-006 (confirmação do card), protege dados RNF-004 e executa os 50 testes da Meta OE5.</div>
+          </div>
+          <div class="box component-box" style="background:#eef2ff; border-color:#4f46e5;">
+            <span class="tag">[Service • Reports & DR]</span>
+            <div class="title">ExportacaoBackupService</div>
+            <div class="desc">Gera relatórios em PDF (OpenPDF), Excel (Apache POI) e CSV (RF-010) e executa backup diário @Scheduled com retenção de 30 dias (RNF-007).</div>
+          </div>
+          <div class="box component-box" style="background:#eef2ff; border-color:#4f46e5;">
+            <span class="tag">[Service • Security & Auth]</span>
+            <div class="title">AuthService & AuditLogService</div>
+            <div class="desc">Gerencia credenciais BCrypt, pacotes de portabilidade LGPD e trilha de auditoria mascarada para o Sysadmin (UC13).</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="arrow-row">▼ Persistência Objeto-Relacional (Spring Data JPA Repositories) ▼</div>
+
+      <div class="row">
+        <div class="box db-box" style="width: 95%;">
+          <span class="tag">[Data Access Layer • 12 Interfaces JpaRepository]</span>
+          <div class="title">UsuarioRepository • GrupoFamiliarRepository • MembroRepository • ContaRepository • CategoriaRepository • TagRepository • TransacaoRepository • OrcamentoRepository • AtivoRepository • OperacaoInvestimentoRepository • NotificacaoRepository • AuditLogRepository</div>
+        </div>
+      </div>
+    </div>
+    <div class="legend">
+      <span>Notação: Modelo C4 — Nível 3: Componentes</span>
+      <span>Arquitetura Limpa e Modular em Spring Boot 3.3.5</span>
+    </div>
+    </body></html>

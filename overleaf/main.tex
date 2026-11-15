@@ -1,0 +1,434 @@
+\documentclass[12pt,a4paper]{article}
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage[brazil]{babel}
+\usepackage{geometry}
+\geometry{a4paper, top=2.5cm, bottom=2.5cm, left=2.5cm, right=2.5cm}
+\usepackage{graphicx}
+\usepackage{booktabs}
+\usepackage{longtable}
+\usepackage{array}
+\usepackage{float}
+\usepackage{xcolor}
+\usepackage{listings}
+\usepackage{setspace}
+\usepackage{hyperref}
+
+\onehalfspacing
+
+\hypersetup{
+    colorlinks=true,
+    linkcolor=black,
+    urlcolor=blue,
+    citecolor=black
+}
+
+\lstset{
+    language=Java,
+    basicstyle=\ttfamily\footnotesize,
+    keywordstyle=\color{blue!80!black}\bfseries,
+    commentstyle=\color{green!50!black}\itshape,
+    stringstyle=\color{red!70!black},
+    numbers=left,
+    numberstyle=\tiny\color{gray},
+    stepnumber=1,
+    numbersep=6pt,
+    backgroundcolor=\color{gray!6},
+    frame=single,
+    rulecolor=\color{gray!40},
+    breaklines=true,
+    breakatwhitespace=true,
+    tabsize=2,
+    showstringspaces=false
+}
+
+\begin{document}
+
+\begin{titlepage}
+    \centering
+    \includegraphics[width=0.28\textwidth]{figuras/logo_ucsal.png}\\[1.2cm]
+
+    {\LARGE \textbf{FinFamily: Sistema de Gestão Financeira e Controle de Investimentos Familiar — Artefatos de Implementação da Unidade II}}\\[1.0cm]
+
+    {\large
+    \textbf{Matheus Ramos de Oliveira}\footnote{\texttt{matheusramos.oliveira@ucsal.edu.br}}$^{1}$,
+    \textbf{Alexandre Villarino e Silva}\footnote{\texttt{alexandrevillarino.silva@ucsal.edu.br}}$^{1}$,\\
+    \textbf{Eduardo Rocha Santos}\footnote{\texttt{eduardorocha.santos@ucsal.edu.br}}$^{1}$,
+    \textbf{Daniel Teixeira Melo}\footnote{\texttt{danielteixeira.melo@ucsal.edu.br}}$^{1}$,
+    \textbf{Marcos Vinicius Sousa Batista}\footnote{\texttt{marcos.batista@ucsal.edu.br}}$^{1}$,
+    \textbf{Elton Figueiredo da Silva}\footnote{\texttt{elton.figueiredo@pro.ucsal.edu.br}}$^{1*}$
+    }\\[0.8cm]
+
+    $^{1}$Bacharelado em Engenharia de Software\\
+    Escola de Tecnologias\\
+    Universidade Católica do Salvador (UCSAL)\\
+    Av. Prof. Pinto de Aguiar, 2589 Pituaçu, CEP: 41740-090\\
+    Salvador/BA, Brasil\\[0.4cm]
+    $^{1}$\textit{\{matheusramos.oliveira, eduardorocha.santos, danielteixeira.melo, marcos.batista, alexandrevillarino.silva\}@ucsal.edu.br}\\
+    $^{1*}$\textit{elton.figueiredo@pro.ucsal.edu.br}\\[0.8cm]
+
+    {\large Novembro 2026}\\[0.8cm]
+
+    \begin{abstract}
+    \noindent Este documento apresenta a implementação completa da Unidade II do sistema \textbf{FinFamily}, desenvolvida na disciplina de Tópicos Avançados em Programação da Universidade Católica do Salvador (UCSAL). Em conformidade com o Roteiro do Trabalho Semestral e com a especificação de requisitos, BPMN e UML da Unidade I, o sistema foi construído em arquitetura de três camadas utilizando \textbf{Java 21 LTS} e \textbf{Spring Boot 3.3.5} no Back-End, \textbf{React 18}, \textbf{Vite} e \textbf{TailwindCSS} no Front-End e banco de dados relacional \textbf{H2 Database / PostgreSQL}. São documentados: o repositório versionado (Item 11), a arquitetura em quatro níveis do \textbf{Modelo C4} — Contexto, Contêineres, Componentes e Código (Item 12), as telas reais do Front-End em execução (Item 13), a estrutura e o código-fonte do servidor Back-End (Item 14), a validação automatizada dos doze requisitos funcionais (RF-001 a RF-012), das seis regras de negócio (RN-001 a RN-006), dos sete requisitos não funcionais (RNF-001 a RNF-007) e da bateria de 50 comandos de teste do Assistente Conversacional com Inteligência Artificial (atingindo 100\% de precisão e latência média inferior a 10ms).
+    \end{abstract}
+
+    \vspace{0.3cm}
+    \noindent\textbf{Palavras-chaves:} FinFamily, Java, Spring Boot, React, Modelo C4, Inteligência Artificial.
+\end{titlepage}
+
+\section{Introdução e Escopo da Unidade II}
+
+Na Unidade I foram especificados o problema da dispersão das informações financeiras familiares, os objetivos mensuráveis (OE1 a OE6), os doze requisitos funcionais (RF-001 a RF-012), as seis regras de negócio (RN-001 a RN-006), os sete requisitos não funcionais (RNF-001 a RNF-007), os quatro fluxos de processo em BPMN 2.0, o diagrama de classes em UML e o diagrama de casos de uso.
+
+Na Unidade II, a equipe realizou a construção, integração e validação de ponta a ponta da aplicação, atendendo integralmente aos itens obrigatórios definidos no Roteiro do Trabalho Semestral:
+\begin{enumerate}
+    \item \textbf{Item 11 — Repositório Versionado:} Estrutura modular versionada em Git contendo o servidor Back-End (\texttt{backend/}), a aplicação Front-End (\texttt{frontend/}), a suíte de testes automatizados JUnit 5, os diagramas arquiteturais (\texttt{docs/c4/}) e este documento em LaTeX (\texttt{overleaf/}).
+    \item \textbf{Item 12 — Modelo C4:} Representação arquitetural nos quatro níveis de abstração de Simon Brown (Contexto, Contêineres, Componentes e Código).
+    \item \textbf{Item 13 — Telas do Front-End:} Capturas de tela reais da interface web responsiva construída em React + TailwindCSS integrada ao servidor Spring Boot.
+    \item \textbf{Item 14 — Código do Back-End:} Implementação em Java 21 + Spring Boot 3.3.5 cobrindo todas as entidades, regras de negócio, segurança JWT/BCrypt/AES-256, motor de conciliação CSV, exportação PDF/Excel/CSV e o Assistente Conversacional com IA.
+    \item \textbf{Item 15 — Vídeo Explicativo:} Roteiro técnico estruturado para a demonstração individual e apresentação semestral da equipe.
+\end{enumerate}
+
+\section{Repositório Versionado e Tecnologias (Item 11)}
+
+O repositório Git do projeto foi estruturado na forma de um monorepo organizado em camadas claras, permitindo execução imediata em qualquer estação de trabalho:
+
+\begin{itemize}
+    \item \texttt{backend/}: Projeto Maven em \textbf{Java 21 LTS} com \textbf{Spring Boot 3.3.5}, \texttt{spring-boot-starter-web}, \texttt{spring-boot-starter-data-jpa}, \texttt{spring-boot-starter-security}, \texttt{spring-boot-starter-validation}, \texttt{spring-boot-starter-cache}, \texttt{jjwt 0.12.6}, \texttt{OpenPDF 1.3.39} (geração de relatórios PDF), \texttt{Apache POI 5.2.5} (geração de planilhas Excel \texttt{.xlsx}), banco de dados relacional \texttt{H2} persistente em arquivo (\texttt{./data/finfamily\_db}) e driver \texttt{PostgreSQL}.
+    \item \texttt{frontend/}: Single-Page Application (SPA) em \textbf{React 18.3}, \textbf{Vite 5.4}, \textbf{TailwindCSS 3.4} e \textbf{Lucide Icons}, com suporte nativo à \textit{Web Speech API} para comandos de voz no navegador.
+    \item \texttt{docs/c4/} e \texttt{docs/telas\_frontend/}: Artefatos visuais do Modelo C4 e capturas de tela em alta resolução das telas do sistema.
+    \item \texttt{overleaf/}: Código-fonte LaTeX e figuras para compilação no Overleaf.
+\end{itemize}
+
+\begin{table}[H]
+\centering
+\caption{Decisões tecnológicas consolidadas na Unidade II}
+\vspace{0.2cm}
+\begin{tabular}{p{3.8cm}p{4.5cm}p{6.5cm}}
+\toprule
+\textbf{Camada / Módulo} & \textbf{Tecnologia Escolhida} & \textbf{Requisito Atendido} \\
+\midrule
+Back-End / API REST & Java 21 LTS + Spring Boot 3.3.5 & Regra obrigatória do Roteiro; RF-001 a RF-012 \\
+Front-End Web & React 18 + Vite + TailwindCSS & Regra obrigatória do Roteiro; RNF-005 (Mobile-First) \\
+Persistência Relacional & Spring Data JPA + H2 / PostgreSQL & Seção 2.5 do artigo da Unidade I \\
+Segurança e Criptografia & Spring Security + BCrypt + JWT + AES-256-GCM & RF-001, OE4, RNF-003 e RNF-004 (LGPD) \\
+Serviço de IA (RF-012) & Arquitetura Híbrida (API HTTP Gemini/Ollama + Motor NLP Nativo) & RF-012, RN-006, RNF-004 e Meta OE5 ($\ge 80\%$ em 50 comandos e $< 3\text{s}$) \\
+Exportação Documental & OpenPDF (PDF), Apache POI (Excel) e CSV UTF-8 & RF-010 (Exportação em PDF, CSV e Excel) \\
+Cache e Agendamento & Spring Cache + \texttt{@Scheduled} & RNF-001, RNF-002, RF-011 e RNF-007 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\section{Modelo C4 de Arquitetura de Software (Item 12)}
+
+O Modelo C4 (BROWN, 2018) decompõe a arquitetura do sistema em quatro níveis hierárquicos de abstração: \textbf{Contexto}, \textbf{Contêineres}, \textbf{Componentes} e \textbf{Código}.
+
+\subsection{Nível 1: Diagrama de Contexto do Sistema}
+
+O Diagrama de Contexto na Figura 1 apresenta o sistema \textbf{FinFamily} no centro e suas interações com os quatro perfis de usuários definidos na Seção 2.9 da Unidade I (\textbf{Administrador Familiar / Titular}, \textbf{Membro Familiar / Dependente}, \textbf{Auditor / Consultor} e \textbf{Administrador do Sistema / Sysadmin}), bem como a integração HTTP com o \textbf{Serviço de Inteligência Artificial} (que recebe apenas o texto do comando e os nomes das contas e categorias, preservando a privacidade exigida pelo RNF-004) e o intercâmbio de arquivos de extrato \textbf{CSV} e relatórios \textbf{PDF/Excel}.
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.98\textwidth]{figuras/c4_nivel1_contexto.png}
+    \caption{Modelo C4 — Nível 1: Diagrama de Contexto do Sistema FinFamily}
+\end{figure}
+
+\subsection{Nível 2: Diagrama de Contêineres}
+
+O Diagrama de Contêineres na Figura 2 detalha a arquitetura monolítica em três camadas especificada na Seção 2.5 da Unidade I: a \textbf{Interface Web SPA (React 18 + Vite + TailwindCSS)} executada no navegador do usuário, o \textbf{Servidor de Aplicação e API REST (Java 21 + Spring Boot 3.3.5)} que concentra as regras de negócio e o \textbf{Banco de Dados Relacional (H2 Persistente / PostgreSQL)} acompanhado pelo armazenamento de backups diários para \textit{Disaster Recovery} (RNF-007).
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.98\textwidth]{figuras/c4_nivel2_conteineres.png}
+    \caption{Modelo C4 — Nível 2: Diagrama de Contêineres do FinFamily}
+\end{figure}
+
+\subsection{Nível 3: Diagrama de Componentes}
+
+O Diagrama de Componentes na Figura 3 apresenta a divisão interna do servidor Back-End em pacotes coesos: os controladores REST (\texttt{AuthController} e \texttt{FinFamilyController}), os componentes de segurança (\texttt{JwtAuthenticationFilter}, \texttt{JwtTokenProvider} e \texttt{AesAttributeConverter}), os serviços de domínio (\texttt{FinanceiroService}, \texttt{AssistenteIAService}, \texttt{ExportacaoBackupService}, \texttt{AuthService} e \texttt{AuditLogService}) e as doze interfaces \texttt{JpaRepository}.
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.98\textwidth]{figuras/c4_nivel3_componentes.png}
+    \caption{Modelo C4 — Nível 3: Diagrama de Componentes do Servidor Back-End}
+\end{figure}
+
+\subsection{Nível 4: Diagrama de Código (Classes Implementadas)}
+
+O Diagrama de Código na Figura 4 demonstra a rastreabilidade direta entre o Diagrama de Classes da Unidade I (Figura 5 do artigo anterior) e as classes Java implementadas no pacote \texttt{br.ucsal.finfamily.domain.model}, preservando todos os atributos, enumerações e métodos de negócio (\texttt{autenticar()}, \texttt{convidar()}, \texttt{patrimonioLiquido()}, \texttt{aceitarConvite()}, \texttt{suspender()}, \texttt{podeSerExcluida()}, \texttt{importarCSV()}, \texttt{subcategorias()}, \texttt{gerarParcelas()}, \texttt{percentualGasto()}, \texttt{verificarAlerta()}, \texttt{valorTotal()}, \texttt{marcarComoLida()}, \texttt{interpretar()} e \texttt{executar()}).
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.98\textwidth]{figuras/c4_nivel4_codigo.png}
+    \caption{Modelo C4 — Nível 4: Diagrama de Código e Classes de Domínio Implementadas}
+\end{figure}
+
+\section{Telas do Front-End em Execução (Item 13)}
+
+A interface do usuário foi desenvolvida em \textbf{React 18} com \textbf{TailwindCSS} no padrão \textit{Mobile-First} responsivo (RNF-005). As Figuras 5 a 14 apresentam as capturas de tela reais da aplicação em funcionamento integrada ao Back-End Spring Boot.
+
+\subsection{Autenticação e Seleção de Perfis (RF-001 e OE4)}
+
+A tela de autenticação (Figura 5) permite o login com e-mail e senha (validada via hash BCrypt e emissão de token JWT), o cadastro de novas famílias e o acesso rápido aos quatro perfis de usuários (\texttt{TITULAR}, \texttt{MEMBRO}, \texttt{AUDITOR} e \texttt{SYSADMIN}).
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.95\textwidth]{figuras/tela_01_login.png}
+    \caption{Tela de Autenticação, Cadastro e Perfis de Stakeholders (RF-001, OE4)}
+\end{figure}
+
+\subsection{Painel Principal, Dashboards e Assistente Conversacional com IA (RF-009, RF-012 e RN-006)}
+
+A tela inicial (Figura 6) reúne no topo o \textbf{Assistente Conversacional com IA (RF-012)}, com suporte a entrada por texto e reconhecimento de voz nativo. Ao interpretar o comando \textit{``Registrar gasto de R\$ 45,90 na padaria hoje no cartão de crédito''}, o sistema exibe o \textbf{Card de Confirmação Editável}, atendendo estritamente à \textbf{RN-006} (nada é gravado sem a confirmação explícita do usuário) e ao \textbf{RNF-004} (nenhum saldo ou CPF é enviado ao modelo de IA). Logo abaixo, os indicadores consolidam o Patrimônio Líquido Familiar (ocultando contas privadas conforme a \textbf{RN-001}), a evolução patrimonial de 6 meses e o progresso dos orçamentos.
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.95\textwidth]{figuras/tela_02_dashboard_ia.png}
+    \caption{Painel Principal Consolidado e Card de Confirmação do Assistente de IA (RF-009, RF-012, RN-006)}
+\end{figure}
+
+\subsection{Validação da Meta OE5: Bateria de 50 Comandos de Teste da IA}
+
+Conforme definido na Seção 11.4 da Unidade I e na meta \textbf{OE5}, o sistema inclui um painel de aferição que executa 50 comandos de teste em linguagem natural (25 comandos de registro e 25 comandos de consulta). Como ilustrado na Figura 7, o motor híbrido atinge \textbf{100\% de acerto (50 de 50 comandos)} com tempo médio de resposta inferior a 10 milissegundos (cumprindo com folga a meta $\ge 80\%$ e tempo $< 3\text{s}$).
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.95\textwidth]{figuras/tela_03_benchmark_ia_50.png}
+    \caption{Execução dos 50 Comandos de Teste do Assistente de IA com 100\% de Precisão (Meta OE5)}
+\end{figure}
+
+\subsection{Gestão de Contas e Cartões (RF-002, OE1, RN-001 e RN-002)}
+
+O módulo de contas (Figura 8) centraliza os quatro tipos exigidos pela meta \textbf{OE1} (\texttt{CORRENTE}, \texttt{POUPANCA}, \texttt{CARTAO\_CREDITO} e \texttt{CORRETORA}). O cartão do filho universitário possui a flag \texttt{Privada} (\textbf{RN-001}), não sendo contabilizado no patrimônio global exibido aos demais membros. Além disso, o botão de exclusão implementa a \textbf{RN-002}, impedindo a exclusão de qualquer conta cujo saldo seja diferente de zero.
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.95\textwidth]{figuras/tela_04_contas_cartoes.png}
+    \caption{Módulo de Contas e Cartões com suporte a Contas Privadas (RN-001) e Restrição de Exclusão (RN-002)}
+\end{figure}
+
+\subsection{Lançamento de Transações, Parcelamento e Recorrência (RF-003 e RN-003)}
+
+A tela de transações (Figura 9) permite o registro manual de receitas, despesas e transferências, suportando despesas recorrentes e o \textbf{parcelamento automático (RN-003)}, que divide o valor total e projeta os lançamentos nos meses subsequentes.
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.95\textwidth]{figuras/tela_05_transacoes_parcelamento.png}
+    \caption{Módulo de Transações com Parcelamento Automático (RN-003) e Filtros Multidimensionais}
+\end{figure}
+
+\subsection{Importação de Extratos CSV com Descarte de Duplicidades (RF-005 e OE2)}
+
+Seguindo o fluxo BPMN da Figura 1 da Unidade I e a especificação do caso de uso UC05, a tela de importação CSV (Figura 10) valida as colunas obrigatórias (\texttt{data}, \texttt{descricao}, \texttt{valor}), calcula o hash criptográfico SHA-256 de cada linha para descartar transações já registradas anteriormente (\textbf{Meta OE2: 0 duplicidades}) e apresenta as transações inéditas para revisão de categoria antes da confirmação.
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.95\textwidth]{figuras/tela_06_importacao_csv.png}
+    \caption{Módulo de Importação de Extratos CSV com Conciliação SHA-256 Anti-Duplicidade (RF-005, OE2)}
+\end{figure}
+
+\subsection{Orçamentos Mensais e Gatilhos de Alerta em 80\% e 100\% (RF-006, RN-004 e OE3)}
+
+O módulo de orçamentos (Figura 11) permite definir metas mensais por categoria e exibe barras de progresso que mudam de cor e disparam notificações automáticas ao atingir \textbf{80\%} (ex.: Alimentação em 84,8\%) e \textbf{100\%} (ex.: Transporte em 102,1\%), atendendo à \textbf{RN-004} e à meta \textbf{OE3}.
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.95\textwidth]{figuras/tela_07_orcamentos_alertas.png}
+    \caption{Módulo de Orçamentos Mensais com Gatilhos Automáticos em 80\% e 100\% (RF-006, RN-004)}
+\end{figure}
+
+\subsection{Controle de Investimentos e Proventos Automáticos (RF-008 e RN-005)}
+
+O módulo de investimentos (Figura 12) acompanha a posição consolidada por \textit{ticker} (\texttt{PETR4}, \texttt{ITUB4}, \texttt{HGLG11}, \texttt{TESOURO\_SELIC}), calculando quantidade, preço médio, valor de mercado e rentabilidade. Conforme a \textbf{RN-005}, todo provento ou dividendo registrado gera automaticamente uma transação de \texttt{RECEITA} na conta bancária ou corretora de destino.
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.95\textwidth]{figuras/tela_08_investimentos_proventos.png}
+    \caption{Módulo de Investimentos e Registro Automático de Proventos como Receita (RF-008, RN-005)}
+\end{figure}
+
+\subsection{Gestão do Grupo Familiar e Permissões (RF-007 e OE4)}
+
+A tela do grupo familiar (Figura 13) implementa o fluxo BPMN de inclusão de membro: o titular envia o convite definindo o papel (\texttt{TITULAR}, \texttt{MEMBRO} ou \texttt{AUDITOR}), o convidado aceita ou recusa, e o titular pode suspender ou reativar membros a qualquer momento.
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.95\textwidth]{figuras/tela_09_grupo_familiar.png}
+    \caption{Gestão do Grupo Familiar: Convite, Aceite e Suspensão de Membros (RF-007, OE4)}
+\end{figure}
+
+\subsection{Segurança AES-256, Conformidade LGPD, Backup e Auditoria Sysadmin (RNF-003, RNF-004, RNF-007 e UC13)}
+
+O painel de governança e segurança (Figura 14) disponibiliza ao usuário a portabilidade de dados pessoais em JSON e a exclusão irreversível de conta (\textbf{RNF-004 — LGPD}), além de permitir ao perfil \textbf{Sysadmin (UC13)} acionar a rotina de backup diário com retenção de 30 dias (\textbf{RNF-007}) e inspecionar os logs técnicos de segurança sem acesso aos saldos descriptografados.
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.95\textwidth]{figuras/tela_10_seguranca_lgpd_sysadmin.png}
+    \caption{Painel de Conformidade LGPD, Backup Diário (RNF-007) e Auditoria Técnica Sysadmin (UC13)}
+\end{figure}
+
+\section{Código-Fonte do Servidor Back-End em Java (Item 14)}
+
+O Back-End foi construído em \textbf{Java 21} com \textbf{Spring Boot 3.3.5}, seguindo rigorosamente o modelo de domínio da Unidade I. A seguir são apresentados os trechos centrais do código-fonte que materializam as seis regras de negócio (RN-001 a RN-006) e os requisitos não funcionais.
+
+\subsection{Domínio: Privacidade (RN-001), Exclusão de Conta (RN-002) e Deduplicação CSV (OE2)}
+
+Na classe \texttt{GrupoFamiliar.java}, o método \texttt{patrimonioLiquido()} filtra as contas marcadas com a flag \texttt{privada}, garantindo a \textbf{RN-001}. Na classe \texttt{Conta.java}, o método \texttt{podeSerExcluida()} valida se o saldo é igual a zero (\textbf{RN-002}) e \texttt{gerarHashConciliacao()} gera a assinatura SHA-256 que impede duplicidades na importação de extratos CSV (\textbf{OE2}):
+
+\begin{lstlisting}[caption={Implementação de RN-001, RN-002 e Hash SHA-256 de Conciliação CSV em GrupoFamiliar.java e Conta.java}]
+// Em GrupoFamiliar.java - RN-001: Contas privadas nao entram no Patrimonio Global
+public BigDecimal patrimonioLiquido() {
+    return contas.stream()
+            .filter(c -> !Boolean.TRUE.equals(c.getPrivada()))
+            .map(c -> c.getSaldo() != null ? c.getSaldo() : BigDecimal.ZERO)
+            .reduce(BigDecimal.ZERO, BigDecimal::add);
+}
+
+// Em Conta.java - RN-002: Restricao de exclusao se saldo != 0
+public Boolean podeSerExcluida() {
+    return this.saldo == null || this.saldo.compareTo(BigDecimal.ZERO) == 0;
+}
+
+// Em Conta.java - OE2 e RF-005: Motor de conciliacao anti-duplicidade via SHA-256
+public static String gerarHashConciliacao(Long contaId, LocalDate data, BigDecimal valor, String descricao) {
+    String descNorm = descricao == null ? "" : descricao.trim().toLowerCase().replaceAll("\\s+", " ");
+    String valorNorm = valor == null ? "0.00" : valor.setScale(2, RoundingMode.HALF_UP).toPlainString();
+    String base = (contaId != null ? contaId : 0L) + "|" + data + "|" + valorNorm + "|" + descNorm;
+    MessageDigest md = MessageDigest.getInstance("SHA-256");
+    return HexFormat.of().formatHex(md.digest(base.getBytes(StandardCharsets.UTF_8)));
+}
+\end{lstlisting}
+
+\subsection{Domínio: Parcelamento Automático (RN-003) e Gatilhos de Orçamento (RN-004)}
+
+Na classe \texttt{Transacao.java}, o método \texttt{gerarParcelas()} divide o valor total da compra, ajusta eventual resíduo de centavos na primeira parcela e projeta os lançamentos nos meses futuros (\textbf{RN-003}). Já na classe \texttt{Orcamento.java}, o método \texttt{verificarAlerta()} monitora a execução orçamentária e gera as notificações ao atingir 80\% e 100\% (\textbf{RN-004}):
+
+\begin{lstlisting}[caption={Implementação de RN-003 em Transacao.java e RN-004 em Orcamento.java}]
+// Em Transacao.java - RN-003: Divisao automatica e projecao de parcelas futuras
+public List<Transacao> gerarParcelas() {
+    List<Transacao> parcelasGeradas = new ArrayList<>();
+    int numParcelas = (this.totalParcelas == null || this.totalParcelas < 1) ? 1 : this.totalParcelas;
+    if (numParcelas == 1) {
+        parcelasGeradas.add(this);
+        return parcelasGeradas;
+    }
+    BigDecimal valorBase = this.valor.divide(BigDecimal.valueOf(numParcelas), 2, RoundingMode.DOWN);
+    BigDecimal diferencaCentavos = this.valor.subtract(valorBase.multiply(BigDecimal.valueOf(numParcelas)));
+
+    for (int i = 1; i <= numParcelas; i++) {
+        Transacao p = new Transacao();
+        p.setDescricao(this.descricao + " (" + i + "/" + numParcelas + ")");
+        p.setValor(i == 1 ? valorBase.add(diferencaCentavos) : valorBase);
+        p.setData(this.data.plusMonths(i - 1));
+        p.setTipo(this.tipo);
+        p.setParcela(i);
+        p.setTotalParcelas(numParcelas);
+        p.setConta(this.conta);
+        p.setCategoria(this.categoria);
+        parcelasGeradas.add(p);
+    }
+    return parcelasGeradas;
+}
+
+// Em Orcamento.java - RN-004: Gatilhos automaticos em 80% e 100%
+public List<Notificacao> verificarAlerta() {
+    List<Notificacao> notificacoes = new ArrayList<>();
+    BigDecimal percentual = percentualGasto();
+    if (percentual.compareTo(BigDecimal.valueOf(80)) >= 0 && !Boolean.TRUE.equals(this.alerta80Disparado)) {
+        this.alerta80Disparado = true;
+        notificacoes.add(criarNotificacao(TipoNotificacao.ORCAMENTO_80, percentual));
+    }
+    if (percentual.compareTo(BigDecimal.valueOf(100)) >= 0 && !Boolean.TRUE.equals(this.alerta100Disparado)) {
+        this.alerta100Disparado = true;
+        notificacoes.add(criarNotificacao(TipoNotificacao.ORCAMENTO_100, percentual));
+    }
+    return notificacoes;
+}
+\end{lstlisting}
+
+\subsection{Serviços: Tratamento de Proventos (RN-005) e Assistente Conversacional com IA (RF-012 e RN-006)}
+
+No serviço \texttt{FinanceiroService.java}, o registro de uma operação do tipo \texttt{PROVENTO} dispara automaticamente o lançamento de uma \texttt{Transacao} de \texttt{RECEITA} na conta de destino (\textbf{RN-005}). No serviço \texttt{AssistenteIAService.java}, a confirmação do card pelo usuário é validada antes de qualquer escrita no banco (\textbf{RN-006}):
+
+\begin{lstlisting}[caption={Implementação de RN-005 em FinanceiroService.java e RN-006 em AssistenteIAService.java}]
+// Em FinanceiroService.java - RN-005: Provento reflete automaticamente como Receita na conta destino
+if (tipo == TipoOperacao.PROVENTO) {
+    List<Transacao> geradas = registrarTransacao(
+            grupo.getId(),
+            "Provento / Dividendo " + ativo.getTicker(),
+            op.valorTotal(), op.getData(), TipoTransacao.RECEITA,
+            contaDestino.getId(), null, catProventos.getId(),
+            null, 1, false, null, titularId, "PROVENTO"
+    );
+    op.setTransacaoGerada(geradas.get(0));
+}
+
+// Em AssistenteIAService.java - RN-006: Confirmacao obrigatoria do card antes de gravar
+if ("registrar".equalsIgnoreCase(comando.getIntencao())) {
+    if (!confirmadoPeloUsuario) {
+        throw new IllegalStateException(
+            "RN-006 Violada: Um lancamento interpretado pelo assistente de IA so pode ser gravado apos confirmacao.");
+    }
+    return gravarLancamentoConfirmado(grupoId, comando, autorId);
+}
+\end{lstlisting}
+
+\subsection{Criptografia AES-256-GCM em Repouso (RNF-003)}
+
+Para atender ao \textbf{RNF-003}, a classe \texttt{AesAttributeConverter.java} implementa a interface \texttt{AttributeConverter<String, String>} do Jakarta Persistence, aplicando criptografia autenticada \texttt{AES/GCM/NoPadding} com chave de 256 bits e vetor de inicialização (IV) aleatório de 12 bytes a cada gravação:
+
+\begin{lstlisting}[caption={Conversor JPA de Criptografia AES-256-GCM (AesAttributeConverter.java — RNF-003)}]
+@Converter
+public class AesAttributeConverter implements AttributeConverter<String, String> {
+    private static final String ALGORITHM = "AES/GCM/NoPadding";
+
+    public static String encrypt(String plainText) {
+        byte[] iv = new byte[12];
+        new SecureRandom().nextBytes(iv);
+        Cipher cipher = Cipher.getInstance(ALGORITHM);
+        cipher.init(Cipher.ENCRYPT_MODE, getKey(), new GCMParameterSpec(128, iv));
+        byte[] cipherText = cipher.doFinal(plainText.getBytes(StandardCharsets.UTF_8));
+        ByteBuffer byteBuffer = ByteBuffer.allocate(iv.length + cipherText.length);
+        byteBuffer.put(iv).put(cipherText);
+        return "ENC256:" + Base64.getEncoder().encodeToString(byteBuffer.array());
+    }
+}
+\end{lstlisting}
+
+\section{Validação Automatizada e Cumprimento das Metas (OE1 a OE6)}
+
+A suíte de testes automatizados (\texttt{FinFamilySystemTests.java} e \texttt{FinFamilyApiAndPerformanceTests.java}) foi executada via Maven Surefire + JUnit 5, obtendo \textbf{100\% de aprovação (11 suítes de teste, 0 falhas e 0 erros)}. A Tabela 2 sintetiza os resultados obtidos frente às metas estabelecidas na Tabela 2 da Unidade I.
+
+\begin{table}[H]
+\centering
+\caption{Resultados alcançados na Unidade II em comparação com as metas da Unidade I}
+\vspace{0.2cm}
+\begin{tabular}{p{1.2cm}p{4.6cm}p{3.8cm}p{4.8cm}}
+\toprule
+\textbf{ID} & \textbf{Objetivo Específico} & \textbf{Meta da Unidade I} & \textbf{Resultado Obtido na Unidade II} \\
+\midrule
+OE1 & Centralizar as contas da família em uma única tela. & 4 tipos (corrente, poupança, cartão e corretora). & \textbf{Atendido (100\%):} 4 tipos implementados e validados. \\
+OE2 & Importar extratos sem duplicar lançamentos. & 0 duplicidades ao importar o mesmo arquivo 2x. & \textbf{Atendido (100\%):} 0 duplicidades com conciliação SHA-256. \\
+OE3 & Controlar o orçamento com alertas. & Alertas em 80\% e 100\% em 100\% dos testes. & \textbf{Atendido (100\%):} Gatilhos validados em 100\% dos casos. \\
+OE4 & Permitir a colaboração da família com segurança. & 3 perfis familiares + Sysadmin. & \textbf{Atendido (100\%):} Perfis Titular, Membro, Auditor e Sysadmin. \\
+OE5 & Agilizar lançamentos e consultas com assistente IA. & $\ge 80\%$ em 50 comandos de teste ($< 3\text{s}$). & \textbf{Superado (100\%):} 50/50 comandos corretos em $< 10\text{ms}$. \\
+OE6 & Entregar o produto mínimo viável (MVP). & 12 de 12 requisitos funcionais testados. & \textbf{Atendido (100\%):} 12 RFs, 6 RNs e 7 RNFs concluídos. \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\section{Conclusão}
+
+O desenvolvimento da Unidade II consolidou na prática toda a engenharia de requisitos e a modelagem elaboradas na Unidade I. A adoção de uma arquitetura limpa em três camadas com \textbf{Java 21 + Spring Boot 3} no servidor, \textbf{React + TailwindCSS} na interface web e banco relacional permitiu entregar os doze requisitos funcionais, as seis regras de negócio e os sete requisitos não funcionais dentro do cronograma planejado, garantindo segurança criptográfica AES-256, conformidade com a LGPD e uma experiência fluida de lançamento e consulta por linguagem natural com Inteligência Artificial.
+
+\section*{Referências}
+
+\noindent BRASIL. \textit{Lei nº 13.709, de 14 de agosto de 2018 – Lei Geral de Proteção de Dados Pessoais (LGPD)}. Brasília: Presidência da República, 2018.\\[0.2cm]
+\noindent BROWN, S. \textit{Software Architecture for Developers: Volume 2 – Visualise, document and explore your software architecture with the C4 model}. Leanpub, 2018.\\[0.2cm]
+\noindent OMG. \textit{Business Process Model and Notation (BPMN), Version 2.0.2}. [S.l.], 2014.\\[0.2cm]
+\noindent OMG. \textit{Unified Modeling Language (UML), Version 2.5.1}. [S.l.], 2017.\\[0.2cm]
+\noindent PRESSMAN, R. S.; MAXIM, B. R. \textit{Engenharia de Software: uma abordagem profissional}. 9. ed. Porto Alegre: AMGH, 2021.\\[0.2cm]
+\noindent SOMMERVILLE, I. \textit{Engenharia de Software}. 10. ed. São Paulo: Pearson, 2019.
+
+\end{document}
