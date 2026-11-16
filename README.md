@@ -15,7 +15,7 @@ Este repositório contém a implementação completa de ponta a ponta (Full-Stac
 
 | Item do Roteiro | Entregável | Localização no Repositório |
 |---|---|---|
-| **Item 11** | Repositório Versionado (Git) | Raiz do projeto (`.git`), estruturado em `backend/`, `frontend/`, `docs/`, `overleaf/` e `scripts/` |
+| **Item 11** | Repositório Versionado (Git / GitHub) | `https://github.com/d3vPadawann/proj_topicos_avancados.git` (`backend/`, `frontend/`, `docs/`, `overleaf/` e `scripts/`) |
 | **Item 12** | Modelo C4 Completo (4 Níveis) | `docs/c4/c4_nivel1_contexto.png` a `c4_nivel4_codigo.png` |
 | **Item 13** | Telas do Front-End em Execução | Código em `frontend/` e 10 capturas reais em `docs/telas_frontend/` |
 | **Item 14** | Código do Servidor Back-End | Código Java 21 + Spring Boot 3.3.5 em `backend/src/main/java/br/ucsal/finfamily/` e testes em `backend/src/test/` |

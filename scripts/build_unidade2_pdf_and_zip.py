@@ -212,7 +212,7 @@ def build_academic_pdf():
 
 <h1>2 &nbsp; Repositório Versionado e Arquitetura Tecnológica (Item 11)</h1>
 <p>
-  O repositório Git encontra-se estruturado em módulos independentes (<code>backend/</code>, <code>frontend/</code>, <code>docs/c4/</code>, <code>docs/telas_frontend/</code> e <code>overleaf/</code>). Na abertura da Unidade II, conforme previsto na Seção 2.5 do artigo anterior, foi registrada a escolha final das tecnologias de implementação (Tabela 1).
+  O repositório Git oficial encontra-se versionado no GitHub em <a href="https://github.com/d3vPadawann/proj_topicos_avancados.git">https://github.com/d3vPadawann/proj_topicos_avancados.git</a>, estruturado em módulos independentes (<code>backend/</code>, <code>frontend/</code>, <code>docs/c4/</code>, <code>docs/telas_frontend/</code> e <code>overleaf/</code>). Na abertura da Unidade II, conforme previsto na Seção 2.5 do artigo anterior, foi registrada a escolha final das tecnologias de implementação (Tabela 1).
 </p>
 
 <table>
