@@ -4,18 +4,12 @@ import br.ucsal.finfamily.domain.enums.TipoTransacao;
 import br.ucsal.finfamily.domain.model.*;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
-import java.net.URI;
-import java.net.http.HttpClient;
-import java.net.http.HttpRequest;
-import java.net.http.HttpResponse;
 import java.text.Normalizer;
-import java.time.Duration;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 import java.util.*;
@@ -26,26 +20,28 @@ import java.util.stream.Collectors;
 /**
  * Servico AssistenteIA conforme Diagrama de Classes (Figura 5), Secao 11, BPMN Figura 4,
  * Caso de Uso UC12 (Tabela 9), RF-012, RN-006, RNF-004 e Meta OE5.
+ *
+ * Fluxo (Secao 11.2): monta o prompt seguro, envia ao LLM (Gemini ou Ollama, via ClienteLLM),
+ * converte o JSON devolvido em um Comando e, para registros, exige a confirmacao do card (RN-006).
+ * Se o LLM falhar, o motor local de regras assume como contingencia (Secao 11.3).
  */
 @Service
 public class AssistenteIAService {
 
-    @Value("${finfamily.ai.gemini-api-url:https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent}")
-    private String urlApi;
+    /** Rotulo exibido quando o LLM nao responde e o motor de regras assume (Secao 11.3). */
+    public static final String PROVEDOR_CONTINGENCIA = "CONTINGENCIA_LOCAL (regras)";
 
-    @Value("${finfamily.ai.gemini-api-key:}")
-    private String geminiApiKey;
-
-    @Value("${finfamily.ai.timeout-ms:2800}")
-    private int timeoutMs;
+    private static final Set<String> PERIODOS_VALIDOS = Set.of("hoje", "semana_atual", "mes_atual", "mes_passado", "ano_atual");
 
     private final FinanceiroService financeiroService;
     private final AuditLogService auditLogService;
+    private final ClienteLLM clienteLLM;
     private final ObjectMapper objectMapper = new ObjectMapper();
 
-    public AssistenteIAService(FinanceiroService financeiroService, AuditLogService auditLogService) {
+    public AssistenteIAService(FinanceiroService financeiroService, AuditLogService auditLogService, ClienteLLM clienteLLM) {
         this.financeiroService = financeiroService;
         this.auditLogService = auditLogService;
+        this.clienteLLM = clienteLLM;
     }
 
     /**
@@ -85,13 +81,17 @@ public class AssistenteIAService {
         // Monta prompt seguro (RNF-004: apenas nomes de contas e categorias, sem saldos nem CPF)
         String promptSeguro = montarPromptSeguroRnf004(texto, contas, categorias);
 
-        Comando comando = null;
-        if (geminiApiKey != null && !geminiApiKey.isBlank()) {
-            comando = tentarChamarApiExternaLLM(promptSeguro, texto, contas, categorias);
-        }
+        // Secao 11.2: o LLM interpreta o texto e devolve a intencao e os campos em JSON
+        Comando comando = clienteLLM.gerarJson(promptSeguro)
+                .map(r -> converterRespostaLLM(r.json(), r.provedor(), texto, contas, categorias))
+                .orElse(null);
 
+        // Secao 11.3: servico de IA indisponivel, lento (> 3s) ou resposta invalida -> motor local de contingencia
         if (comando == null) {
             comando = interpretarMotorNlpHibrido(texto, contas, categorias);
+            comando.setProvedorIA(PROVEDOR_CONTINGENCIA);
+            comando.setMensagemAssistente("Serviço de IA indisponível no momento; comando interpretado pelo motor local de contingência (Seção 11.3). "
+                    + comando.getMensagemAssistente());
         }
 
         long duracaoMs = Math.max(1L, (System.nanoTime() - inicioNs) / 1_000_000);
@@ -99,9 +99,157 @@ public class AssistenteIAService {
         comando.setTextoOriginal(texto);
 
         auditLogService.registrar("ASSISTENTE_IA_INTERPRETAR", "ASSISTENTE_IA", "membro@finfamily.com", "INFO",
-                "Intencao='" + comando.getIntencao() + "' interpretada em " + duracaoMs + "ms (RNF-004 respeitado: zero saldos enviados).");
+                "Intencao='" + comando.getIntencao() + "' interpretada por " + comando.getProvedorIA() + " em " + duracaoMs
+                        + "ms (RNF-004 respeitado: zero saldos enviados).");
 
         return comando;
+    }
+
+    /**
+     * Converte o JSON devolvido pelo LLM em um Comando, associando os nomes de conta e categoria
+     * aos registros do grupo. Devolve null se a resposta for invalida ou incompleta, para que o
+     * assistente use a contingencia da Secao 11.3.
+     */
+    Comando converterRespostaLLM(String json, String provedor, String textoOriginal,
+                                 List<Conta> contas, List<Categoria> categorias) {
+        JsonNode r;
+        try {
+            int ini = json.indexOf('{');
+            int fim = json.lastIndexOf('}');
+            if (ini < 0 || fim <= ini) {
+                return null;
+            }
+            r = objectMapper.readTree(json.substring(ini, fim + 1));
+        } catch (Exception e) {
+            return null;
+        }
+
+        String intencao = texto(r, "intencao").toLowerCase();
+        Comando cmd = new Comando();
+        cmd.setProvedorIA(provedor);
+
+        switch (intencao) {
+            case "fora_escopo" -> {
+                cmd.setIntencao("fora_escopo");
+                cmd.setRequerConfirmacao(false);
+                cmd.setMensagemAssistente(
+                        "Em coerência com o escopo do FinFamily (Seção 11.3), o assistente não recomenda investimentos nem presta consultoria financeira; ele apenas registra transações e consulta os dados da própria família.");
+                return cmd;
+            }
+            case "nao_entendido" -> throw new IllegalArgumentException(
+                    "Fluxo Alternativo 3a (UC12): Não entendi o comando. Por favor, reformule (ex: 'Registrar gasto de R$ 45,90 na padaria hoje no cartão') ou utilize o formulário de lançamento.");
+            case "registrar", "consultar" -> cmd.setIntencao(intencao);
+            default -> {
+                return null;
+            }
+        }
+
+        cmd.setTipo("RECEITA".equalsIgnoreCase(texto(r, "tipo")) ? "RECEITA" : "DESPESA");
+
+        if ("consultar".equals(intencao)) {
+            cmd.setRequerConfirmacao(false);
+            String periodo = texto(r, "periodo").toLowerCase();
+            cmd.setPeriodo(PERIODOS_VALIDOS.contains(periodo) ? periodo : "mes_atual");
+            cmd.setBusca(texto(r, "busca"));
+
+            Conta conta = buscarContaPorNome(texto(r, "conta"), contas);
+            if (conta != null) {
+                cmd.setConta(conta.getNome());
+                cmd.setContaId(conta.getId());
+            }
+            Categoria categoria = buscarCategoriaPorNome(texto(r, "categoria"), categorias);
+            if (categoria != null) {
+                cmd.setCategoria(categoria.getNome());
+                cmd.setCategoriaId(categoria.getId());
+            }
+
+            cmd.setMensagemAssistente(String.format(
+                    "Filtro de consulta identificado: tipo=%s, busca='%s', categoria='%s', período='%s'.",
+                    cmd.getTipo(),
+                    cmd.getBusca().isBlank() ? "Todas" : cmd.getBusca(),
+                    cmd.getCategoria() != null ? cmd.getCategoria() : "Todas",
+                    traduzirPeriodo(cmd.getPeriodo())
+            ));
+            return cmd;
+        }
+
+        // registrar: o valor e obrigatorio para montar o card
+        BigDecimal valor;
+        try {
+            valor = new BigDecimal(texto(r, "valor").replace(",", ".")).abs().setScale(2, RoundingMode.HALF_UP);
+        } catch (NumberFormatException e) {
+            return null;
+        }
+        if (valor.signum() == 0) {
+            return null;
+        }
+
+        cmd.setRequerConfirmacao(true); // RN-006
+        cmd.setValor(valor);
+
+        String descricao = texto(r, "descricao");
+        cmd.setDescricao(descricao.isBlank() ? "Lançamento via Assistente IA" : capitalizar(descricao));
+
+        try {
+            String data = texto(r, "data");
+            cmd.setData(data.isBlank() ? LocalDate.now() : LocalDate.parse(data));
+        } catch (Exception e) {
+            cmd.setData(LocalDate.now());
+        }
+
+        int parcelas = r.path("parcelas").asInt(1);
+        cmd.setParcelas(Math.max(1, Math.min(parcelas, 48)));
+        cmd.setRecorrente(r.path("recorrente").asBoolean(false));
+
+        String norm = normalizar(textoOriginal);
+        Conta conta = buscarContaPorNome(texto(r, "conta"), contas);
+        if (conta == null) {
+            conta = identificarContaNoTexto(norm, contas, true);
+        }
+        if (conta != null) {
+            cmd.setConta(conta.getNome());
+            cmd.setContaId(conta.getId());
+        }
+
+        Categoria categoria = buscarCategoriaPorNome(texto(r, "categoria"), categorias);
+        if (categoria == null) {
+            categoria = identificarCategoriaParaRegistro(norm, cmd.getDescricao(), cmd.getTipo(), categorias);
+        }
+        if (categoria != null) {
+            cmd.setCategoria(categoria.getNome());
+            cmd.setCategoriaId(categoria.getId());
+        }
+
+        cmd.setMensagemAssistente(String.format(
+                "Card montado para confirmação (RN-006): %s de R$ %.2f — '%s' em %s na conta '%s' [%s]. Confirme para gravar.",
+                "RECEITA".equals(cmd.getTipo()) ? "Receita" : "Despesa",
+                cmd.getValor(),
+                cmd.getDescricao(),
+                cmd.getData(),
+                cmd.getConta(),
+                cmd.getCategoria()
+        ));
+        return cmd;
+    }
+
+    private static String texto(JsonNode no, String campo) {
+        JsonNode v = no.get(campo);
+        return v == null || v.isNull() ? "" : v.asText("").trim();
+    }
+
+    private Conta buscarContaPorNome(String nome, List<Conta> contas) {
+        if (nome == null || nome.isBlank() || contas == null) return null;
+        String alvo = normalizar(nome);
+        return contas.stream().filter(c -> normalizar(c.getNome()).equals(alvo)).findFirst()
+                .orElseGet(() -> contas.stream()
+                        .filter(c -> normalizar(c.getNome()).contains(alvo) || alvo.contains(normalizar(c.getNome())))
+                        .findFirst().orElse(null));
+    }
+
+    private Categoria buscarCategoriaPorNome(String nome, List<Categoria> categorias) {
+        if (nome == null || nome.isBlank() || categorias == null) return null;
+        String alvo = normalizar(nome);
+        return categorias.stream().filter(c -> normalizar(c.getNome()).equals(alvo)).findFirst().orElse(null);
     }
 
     /**
@@ -208,62 +356,40 @@ public class AssistenteIAService {
     public String montarPromptSeguroRnf004(String textoUsuario, List<Conta> contas, List<Categoria> categorias) {
         String nomesContas = contas.stream().map(Conta::getNome).collect(Collectors.joining(", "));
         String nomesCategorias = categorias.stream().map(Categoria::getNome).collect(Collectors.joining(", "));
-        return String.format(
-                "Você é o assistente financeiro do FinFamily. Data de hoje: %s. " +
-                "Contas disponíveis: [%s]. Categorias disponíveis: [%s]. " +
-                "Interprete o comando do usuário e responda APENAS em JSON com os campos: " +
-                "intencao (registrar|consultar), valor, descricao, data (YYYY-MM-DD), conta, categoria, busca, periodo, tipo (despesa|receita). " +
-                "Comando: \"%s\"",
-                LocalDate.now(), nomesContas, nomesCategorias, textoUsuario
+        return String.format("""
+                Você é o assistente do FinFamily, um sistema de gestão financeira familiar.
+                Sua única tarefa é interpretar o comando do usuário e devolver um JSON. Você não grava nem consulta dados.
+                Data de hoje: %s.
+                Contas disponíveis: [%s].
+                Categorias disponíveis: [%s].
+
+                Responda APENAS com um objeto JSON com estes campos:
+                - "intencao": "registrar" (lançar receita/despesa), "consultar" (perguntar sobre gastos/receitas),
+                  "fora_escopo" (pedido de recomendação de investimento ou consultoria) ou "nao_entendido".
+                - "tipo": "DESPESA" ou "RECEITA".
+                - "valor": número com ponto decimal (ex.: 1250.90) ou null.
+                - "descricao": descrição curta do lançamento (ex.: "Padaria") ou null.
+                - "data": data do lançamento no formato YYYY-MM-DD ("hoje", "ontem" etc. devem ser convertidos).
+                - "conta": exatamente um dos nomes de conta da lista ou null.
+                - "categoria": exatamente um dos nomes de categoria da lista ou null.
+                - "parcelas": número de parcelas (1 se não for parcelado).
+                - "recorrente": true para despesas que se repetem todo mês (assinaturas, mensalidades), senão false.
+                - "busca": palavra a procurar na descrição das transações em uma consulta (ex.: "Uber") ou "".
+                - "periodo": "hoje", "semana_atual", "mes_atual", "mes_passado" ou "ano_atual".
+
+                Comando do usuário: "%s"
+                """,
+                LocalDate.now(), nomesContas, nomesCategorias, textoUsuario.replace("\"", "'")
         );
     }
 
-    private Comando tentarChamarApiExternaLLM(String prompt, String textoOriginal, List<Conta> contas, List<Categoria> categorias) {
-        try {
-            HttpClient client = HttpClient.newBuilder()
-                    .connectTimeout(Duration.ofMillis(timeoutMs))
-                    .build();
-
-            String payload = objectMapper.writeValueAsString(Map.of(
-                    "contents", List.of(Map.of("parts", List.of(Map.of("text", prompt))))
-            ));
-
-            HttpRequest request = HttpRequest.newBuilder()
-                    .uri(URI.create(urlApi + "?key=" + geminiApiKey))
-                    .timeout(Duration.ofMillis(timeoutMs))
-                    .header("Content-Type", "application/json")
-                    .POST(HttpRequest.BodyPublishers.ofString(payload))
-                    .build();
-
-            HttpResponse<String> response = client.send(request, HttpResponse.BodyHandlers.ofString());
-            if (response.statusCode() == 200) {
-                JsonNode root = objectMapper.readTree(response.body());
-                String textResp = root.at("/candidates/0/content/parts/0/text").asText();
-                int idxStart = textResp.indexOf('{');
-                int idxEnd = textResp.lastIndexOf('}');
-                if (idxStart >= 0 && idxEnd > idxStart) {
-                    JsonNode jsonCmd = objectMapper.readTree(textResp.substring(idxStart, idxEnd + 1));
-                    Comando c = interpretarMotorNlpHibrido(textoOriginal, contas, categorias);
-                    if (jsonCmd.hasNonNull("intencao")) {
-                        c.setIntencao(jsonCmd.get("intencao").asText());
-                    }
-                    c.setProvedorIA("GEMINI_API_HTTP");
-                    return c;
-                }
-            }
-        } catch (Exception ignored) {
-            // Fallback imediato para o motor NLP nativo conforme Secao 11.3 (< 3s)
-        }
-        return null;
-    }
-
     /**
-     * Motor NLP Financeiro Hibrido em Portugues para interpretacao instantanea (< 10ms)
-     * de comandos de registro e consulta em linguagem natural (RF-012, OE5).
+     * Motor local de contingencia baseado em regras (Secao 11.3), usado apenas quando o servico
+     * de IA esta indisponivel, demora mais de 3 segundos ou devolve uma resposta invalida.
      */
     private Comando interpretarMotorNlpHibrido(String texto, List<Conta> contas, List<Categoria> categorias) {
         Comando cmd = new Comando();
-        cmd.setProvedorIA("FINFAMILY_NLP_ENGINE_V2");
+        cmd.setProvedorIA(PROVEDOR_CONTINGENCIA);
 
         String textoTrim = texto.trim();
         String norm = normalizar(textoTrim);
@@ -478,9 +604,20 @@ public class AssistenteIAService {
         long somaTempoMs = 0;
         long maiorTempoMs = 0;
         List<Map<String, Object>> resultadosDetalhados = new ArrayList<>();
+        Map<String, Integer> respondidosPorProvedor = new LinkedHashMap<>();
 
         for (CasoTesteIA caso : casos) {
-            Comando interpretado = interpretar(grupoId, caso.comando());
+            long inicioCasoNs = System.nanoTime();
+            Comando interpretado;
+            try {
+                interpretado = interpretar(grupoId, caso.comando());
+            } catch (IllegalArgumentException e) {
+                // Comando nao compreendido conta como erro de interpretacao
+                interpretado = new Comando();
+                interpretado.setIntencao("nao_entendido");
+                interpretado.setProvedorIA(clienteLLM.resolverProvedor());
+                interpretado.setTempoRespostaMs(Math.max(1L, (System.nanoTime() - inicioCasoNs) / 1_000_000));
+            }
             long tMs = interpretado.getTempoRespostaMs() != null ? interpretado.getTempoRespostaMs() : 1L;
             somaTempoMs += tMs;
             maiorTempoMs = Math.max(maiorTempoMs, tMs);
@@ -510,14 +647,18 @@ public class AssistenteIAService {
             item.put("contaIdentificada", interpretado.getConta());
             item.put("categoriaIdentificada", interpretado.getCategoria());
             item.put("tempoRespostaMs", tMs);
+            item.put("provedorIA", interpretado.getProvedorIA());
             item.put("passou", passou);
             resultadosDetalhados.add(item);
+            respondidosPorProvedor.merge(interpretado.getProvedorIA(), 1, Integer::sum);
         }
 
         double percentualAcerto = (acertos * 100.0) / casos.size();
 
         Map<String, Object> relatorio = new LinkedHashMap<>();
         relatorio.put("metaOE5", ">= 80% de acerto em 50 comandos (25 registros + 25 consultas) e tempo <= 3000ms");
+        relatorio.put("provedorConfigurado", clienteLLM.resolverProvedor());
+        relatorio.put("respondidosPorProvedor", respondidosPorProvedor);
         relatorio.put("totalComandosTestados", casos.size());
         relatorio.put("comandosCorretos", acertos);
         relatorio.put("taxaAcertoPercentual", BigDecimal.valueOf(percentualAcerto).setScale(2, RoundingMode.HALF_UP));

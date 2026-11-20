@@ -1021,9 +1021,18 @@ export default function App() {
                       <span className="px-2.5 py-1 rounded-full bg-amber-100 text-amber-800 font-bold text-xs">
                         RN-006: Confirmação Obrigatória do Lançamento
                       </span>
-                      <span className="text-xs text-slate-500">
-                        Interpretado em {cardConfirmacaoIA.tempoRespostaMs}ms via {cardConfirmacaoIA.provedorIA}
+                      <span
+                        className={`px-2 py-0.5 rounded-full text-[11px] font-semibold ${
+                          String(cardConfirmacaoIA.provedorIA || '').startsWith('CONTINGENCIA')
+                            ? 'bg-slate-200 text-slate-700'
+                            : 'bg-indigo-100 text-indigo-800'
+                        }`}
+                      >
+                        {String(cardConfirmacaoIA.provedorIA || '').startsWith('CONTINGENCIA')
+                          ? 'IA indisponível — motor local de contingência'
+                          : `Interpretado pela IA: ${cardConfirmacaoIA.provedorIA}`}
                       </span>
+                      <span className="text-xs text-slate-500">em {cardConfirmacaoIA.tempoRespostaMs}ms</span>
                     </div>
                     <span className="text-[11px] text-emerald-700 font-medium flex items-center gap-1">
                       <Lock className="w-3.5 h-3.5" /> RNF-004: Zero saldos ou CPF enviados ao modelo
@@ -1189,6 +1198,14 @@ export default function App() {
                       <p className="text-xs text-slate-600">
                         Taxa de Acerto: <strong className="text-emerald-700">{benchmark50.taxaAcertoPercentual}% ({benchmark50.comandosCorretos}/{benchmark50.totalComandosTestados})</strong> — Meta exigida: ≥ 80% | Tempo Médio: <strong>{benchmark50.tempoMedioMs}ms</strong> (Meta: &lt; 3000ms)
                       </p>
+                      {benchmark50.respondidosPorProvedor && (
+                        <p className="text-xs text-slate-600">
+                          Respondido por:{' '}
+                          {Object.entries(benchmark50.respondidosPorProvedor)
+                            .map(([prov, qtd]) => `${prov} (${qtd})`)
+                            .join(' • ')}
+                        </p>
+                      )}
                     </div>
                     <button
                       onClick={() => setBenchmark50(null)}
@@ -1207,6 +1224,7 @@ export default function App() {
                           <th className="p-2 text-left">Descrição / Filtro</th>
                           <th className="p-2 text-right">Valor</th>
                           <th className="p-2 text-right">Tempo</th>
+                          <th className="p-2 text-left">Provedor</th>
                           <th className="p-2 text-center">Status</th>
                         </tr>
                       </thead>
@@ -1219,9 +1237,14 @@ export default function App() {
                             <td className="p-2">{r.descricaoOuFiltro}</td>
                             <td className="p-2 text-right">{r.valorObtido ? fmtBRL(r.valorObtido) : '-'}</td>
                             <td className="p-2 text-right font-mono">{r.tempoRespostaMs}ms</td>
+                            <td className="p-2 text-[11px] text-slate-600">{r.provedorIA}</td>
                             <td className="p-2 text-center">
-                              <span className="px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 font-bold text-[10px]">
-                                OK
+                              <span
+                                className={`px-2 py-0.5 rounded-full font-bold text-[10px] ${
+                                  r.passou ? 'bg-emerald-100 text-emerald-800' : 'bg-rose-100 text-rose-800'
+                                }`}
+                              >
+                                {r.passou ? 'OK' : 'ERRO'}
                               </span>
                             </td>
                           </tr>

@@ -29,7 +29,35 @@ Este repositório contém a implementação completa de ponta a ponta (Full-Stac
 - **Back-End (`backend/`):** Java 21 LTS, Spring Boot 3.3.5, Spring Data JPA / Hibernate, Spring Security (BCrypt + JWT Stateless + AES-256-GCM via `AttributeConverter`), Spring Cache (`@EnableCaching`), OpenPDF 1.3.39 (Relatórios PDF), Apache POI 5.2.5 (Planilhas `.xlsx`), JUnit 5 + MockMvc.
 - **Front-End (`frontend/`):** React 18.3, Vite 5.4, TailwindCSS 3.4, Lucide Icons, Web Speech API (reconhecimento de voz nativo em Português `pt-BR`).
 - **Banco de Dados Relacional:** H2 Database em modo persistente (`./data/finfamily_db`) pré-populado automaticamente pelo `DataSeederConfig` + perfil preparado para PostgreSQL (`application-postgres.properties`).
-- **Serviço de Inteligência Artificial (`AssistenteIAService`):** Arquitetura Híbrida (Cliente HTTP REST configurável para Google Gemini / Ollama Local + Motor NLP Financeiro determinístico em Português que garante tempo de resposta $< 10\text{ms}$ e $100\%$ de acerto nos 50 comandos da Meta OE5 mesmo offline).
+- **Serviço de Inteligência Artificial (`AssistenteIAService` + `ClienteLLM`):** o comando do usuário é enviado a um modelo de linguagem (Google Gemini via API ou Ollama local), que devolve a intenção e os campos em JSON (Seção 11.2). Se o serviço de IA estiver indisponível, demorar mais de 3 s ou responder algo inválido, um motor local de regras assume como contingência (Seção 11.3) e a tela avisa isso.
+
+### 2.1. Como configurar a IA (RF-012)
+
+O provedor é escolhido pela variável `FINFAMILY_AI_PROVEDOR` (padrão `AUTO`):
+
+| Valor | Comportamento |
+|---|---|
+| `AUTO` | Usa o Gemini se `GEMINI_API_KEY` estiver definida; senão tenta o Ollama local. |
+| `GEMINI` | Usa a API do Google Gemini (modelo em `GEMINI_MODEL`, padrão `gemini-2.0-flash`). |
+| `OLLAMA` | Usa um modelo local do Ollama (`OLLAMA_MODEL`, padrão `llama3.2`); o texto não sai da máquina. |
+| `LOCAL` | Não chama IA; só o motor de contingência (usado nos testes automatizados). |
+
+Exemplo com Gemini (a chave gratuita é gerada no Google AI Studio e **não deve ser commitada**):
+```powershell
+$env:GEMINI_API_KEY = "sua-chave-aqui"
+cd backend
+mvn spring-boot:run
+```
+
+Exemplo com Ollama local:
+```powershell
+ollama pull llama3.2
+$env:FINFAMILY_AI_PROVEDOR = "OLLAMA"
+cd backend
+mvn spring-boot:run
+```
+
+O card de confirmação mostra qual provedor interpretou cada comando, e o relatório dos 50 comandos (Meta OE5) mostra o provedor e o resultado (OK/ERRO) de cada linha. Observação: no plano gratuito do Gemini há limite de requisições por minuto; ao rodar os 50 comandos de uma vez, parte deles pode cair na contingência.
 
 ---
 
@@ -40,7 +68,7 @@ Basta dar um duplo clique no arquivo **`INICIAR_FINFAMILY.bat`** na raiz do proj
 - **Aplicação Completa (Front-End + API):** `http://localhost:8085`
 - **Console do Banco de Dados H2:** `http://localhost:8085/h2-console` (JDBC URL: `jdbc:h2:file:./data/finfamily_db`, Usuário: `sa`, Senha em branco)
 
-### Opção B — Executar Testes Automatizados JUnit 5 (11 Suítes + 50 Comandos IA)
+### Opção B — Executar Testes Automatizados JUnit 5 (21 testes, incluindo a integração com o LLM)
 No PowerShell:
 ```powershell
 $env:JAVA_HOME = "G:\Program Files\Java\jdk-21"
