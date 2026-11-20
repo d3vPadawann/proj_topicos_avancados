@@ -63,18 +63,36 @@ O card de confirmação mostra qual provedor interpretou cada comando, e o relat
 
 ## 3. Como Executar o Sistema (1 Clique)
 
-### Opção A — Inicialização Rápida no Windows (`INICIAR_FINFAMILY.bat`)
-Basta dar um duplo clique no arquivo **`INICIAR_FINFAMILY.bat`** na raiz do projeto. Ele configura automaticamente o `JAVA_HOME` (JDK 21), inicia o servidor Spring Boot na porta **`8085`** (que já serve tanto a API REST quanto o bundle de produção do Front-End React) e abre o navegador em:
-- **Aplicação Completa (Front-End + API):** `http://localhost:8085`
-- **Console do Banco de Dados H2:** `http://localhost:8085/h2-console` (JDBC URL: `jdbc:h2:file:./data/finfamily_db`, Usuário: `sa`, Senha em branco)
+**Pré-requisito:** apenas o **JDK 21** (ou superior). Não é preciso instalar o Maven: o projeto usa o Maven Wrapper (`backend/mvnw.cmd`), que baixa o Maven sozinho na primeira execução.
 
-### Opção B — Executar Testes Automatizados JUnit 5 (32 testes: regras de negócio, IA e controle de acesso)
-No PowerShell:
+### Opção A — Inicialização Rápida no Windows (`INICIAR_FINFAMILY.bat`)
+Dê um duplo clique em **`INICIAR_FINFAMILY.bat`** na raiz do projeto. Ele:
+1. procura o Java 21+ (no `JAVA_HOME` ou no `PATH`) e avisa se não encontrar;
+2. avisa se a porta `8085` já estiver em uso (outro FinFamily aberto);
+3. inicia o servidor Spring Boot pelo Maven Wrapper em uma janela própria (ele já entrega o front-end React compilado);
+4. espera o servidor responder e abre o navegador em **`http://localhost:8085`**.
+
+Console do banco H2: `http://localhost:8085/h2-console` (JDBC URL: `jdbc:h2:file:./data/finfamily_db`, usuário `sa`, senha em branco). Na primeira execução o download do Maven e das dependências pode levar alguns minutos.
+
+Para usar o Gemini, copie `backend/config/ia.properties.exemplo` para `backend/config/ia.properties` e coloque a sua chave (esse arquivo não vai para o Git).
+
+### Opção B — Pelo terminal
 ```powershell
-$env:JAVA_HOME = "G:\Program Files\Java\jdk-21"
-$env:Path = "$env:JAVA_HOME\bin;$env:Path"
 cd backend
-& "C:\Program Files\JetBrains\IntelliJ IDEA 2024.3.4.1\plugins\maven\lib\maven3\bin\mvn.cmd" test
+.\mvnw.cmd spring-boot:run
+```
+
+Testes automatizados JUnit 5 (33 testes: regras de negócio, IA e controle de acesso):
+```powershell
+cd backend
+.\mvnw.cmd test
+```
+
+Front-end em modo de desenvolvimento (opcional, com recarga automática em `http://localhost:5173`, usando o back-end da porta 8085):
+```powershell
+cd frontend
+npm install
+npm run dev
 ```
 
 ---

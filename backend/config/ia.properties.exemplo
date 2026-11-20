@@ -1,0 +1,12 @@
+# Configuracao local da IA (RF-012)
+# 1. Copie este arquivo para "ia.properties" nesta mesma pasta (backend/config/).
+# 2. Coloque a sua chave do Google AI Studio abaixo.
+# O arquivo ia.properties esta no .gitignore: a chave nunca vai para o GitHub.
+
+finfamily.ai.provedor=GEMINI
+finfamily.ai.gemini-api-key=COLE_SUA_CHAVE_AQUI
+# finfamily.ai.gemini-model=gemini-3.5-flash-lite
+# finfamily.ai.gemini-thinking-level=low
+
+# Alternativa sem internet (Ollama instalado e "ollama pull llama3.2" executado):
+# finfamily.ai.provedor=OLLAMA
