@@ -1,3 +1,4 @@
+// testes de controle de acesso
 package br.ucsal.finfamily;
 
 import com.fasterxml.jackson.databind.JsonNode;
@@ -20,15 +21,10 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-/**
- * Controle de acesso no back-end (RF-001, OE4, Secao 2.9, Tabela 7 e RNF-004):
- * cada perfil so faz o que o documento da Unidade I permite, e ninguem acessa outro grupo.
- */
 @SpringBootTest
 @AutoConfigureMockMvc
 @Transactional
 class ControleAcessoTests {
-
     private static final ObjectMapper JSON = new ObjectMapper();
 
     @Autowired
@@ -46,8 +42,6 @@ class ControleAcessoTests {
             {"descricao":"Teste de acesso","valor":10.00,"tipo":"DESPESA"}
             """;
 
-    // ---------------------------------------------------------------- sem login
-
     @Test
     @DisplayName("RF-001: sem token a API responde 401")
     void semTokenRecebe401() throws Exception {
@@ -64,8 +58,6 @@ class ControleAcessoTests {
         mockMvc.perform(get("/api/health")).andExpect(status().isOk());
         assertTrue(token(LoginDeTeste.TITULAR).startsWith("Bearer "));
     }
-
-    // ---------------------------------------------------------------- auditor
 
     @Test
     @DisplayName("OE4: Auditor le os paineis, mas nao grava nem exporta")
@@ -86,8 +78,6 @@ class ControleAcessoTests {
         mockMvc.perform(get("/api/exportacao/csv").header("Authorization", auditor))
                 .andExpect(status().isForbidden());
     }
-
-    // ---------------------------------------------------------------- membro
 
     @Test
     @DisplayName("Secao 2.9: Membro lanca transacoes e exporta, mas nao altera configuracoes do grupo")
@@ -126,8 +116,6 @@ class ControleAcessoTests {
                 .andExpect(status().isOk());
     }
 
-    // ---------------------------------------------------------------- titular
-
     @Test
     @DisplayName("Titular gerencia contas, mas nao pode promover alguem a Sysadmin ou Titular")
     void titularGerenciaComLimites() throws Exception {
@@ -141,8 +129,6 @@ class ControleAcessoTests {
                 .andExpect(status().isForbidden());
     }
 
-    // ---------------------------------------------------------------- sysadmin
-
     @Test
     @DisplayName("UC13: Sysadmin ve logs e faz backup, mas nao acessa dados financeiros")
     void sysadminSemDadosFinanceiros() throws Exception {
@@ -154,8 +140,6 @@ class ControleAcessoTests {
         String titular = token(LoginDeTeste.TITULAR);
         mockMvc.perform(get("/api/sysadmin/logs").header("Authorization", titular)).andExpect(status().isForbidden());
     }
-
-    // ---------------------------------------------------------------- convidado
 
     @Test
     @DisplayName("RF-007: convidado que ainda nao aceitou o convite nao ve os dados do grupo")
@@ -186,12 +170,9 @@ class ControleAcessoTests {
                         .contentType(MediaType.APPLICATION_JSON).content("{\"aceitar\":true}"))
                 .andExpect(status().isOk());
 
-        // Depois de aceitar, um novo login ja da acesso aos dados do grupo
         mockMvc.perform(get("/api/dashboard").header("Authorization", token(LoginDeTeste.CONVIDADO)))
                 .andExpect(status().isOk());
     }
-
-    // ---------------------------------------------------------------- LGPD
 
     @Test
     @DisplayName("RNF-004: LGPD vale so para os dados do proprio usuario")
@@ -220,12 +201,9 @@ class ControleAcessoTests {
                 .andExpect(content().string(not(containsString("documentoSensivel"))));
     }
 
-    // ---------------------------------------------------------------- isolamento entre grupos
-
     @Test
     @DisplayName("Isolamento: cada familia so ve e altera os dados do proprio grupo")
     void gruposFicamIsolados() throws Exception {
-        // Nova familia, cadastrada sem nome de grupo: deve ganhar um grupo proprio
         String email = "familia." + UUID.randomUUID() + "@teste.com";
         String cadastro = mockMvc.perform(post("/api/auth/register")
                         .contentType(MediaType.APPLICATION_JSON)
@@ -242,7 +220,6 @@ class ControleAcessoTests {
                 .andReturn().getResponse().getContentAsString()).get("grupoId").asLong();
         assertNotEquals(grupoDemo, novo.get("grupoId").asLong(), "Cadastro sem convite nao pode entrar no grupo de outra familia");
 
-        // A nova familia tenta forcar o grupoId da familia de demonstracao no corpo: e ignorado
         String contaCriada = mockMvc.perform(post("/api/contas").header("Authorization", outraFamilia)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"nome\":\"Conta Isolada\",\"tipo\":\"CORRENTE\",\"saldo\":0,\"grupoId\":" + grupoDemo + "}"))
@@ -254,7 +231,6 @@ class ControleAcessoTests {
                 .andExpect(status().isOk())
                 .andExpect(content().string(not(containsString("Conta Isolada"))));
 
-        // O titular da familia de demonstracao nao altera nem le registros da outra familia
         mockMvc.perform(delete("/api/contas/" + contaDaOutraFamilia).header("Authorization", titular))
                 .andExpect(status().isForbidden());
         mockMvc.perform(get("/api/transacoes?contaId=" + contaDaOutraFamilia).header("Authorization", titular))

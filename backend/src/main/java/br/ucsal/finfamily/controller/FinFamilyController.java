@@ -1,3 +1,4 @@
+// endpoints REST do sistema
 package br.ucsal.finfamily.controller;
 
 import br.ucsal.finfamily.domain.enums.*;
@@ -20,15 +21,9 @@ import java.time.LocalDate;
 import java.util.List;
 import java.util.Map;
 
-/**
- * Controller REST Principal do Sistema FinFamily.
- * Expoe todas as funcionalidades de RF-002 a RF-012, Regras de Negocio RN-001 a RN-006
- * e Requisitos Nao Funcionais RNF-001 a RNF-007.
- */
 @RestController
 @RequestMapping("/api")
 public class FinFamilyController {
-
     private final FinanceiroService financeiroService;
     private final AssistenteIAService assistenteIAService;
     private final ExportacaoBackupService exportacaoBackupService;
@@ -56,19 +51,11 @@ public class FinFamilyController {
         ));
     }
 
-    // =========================================================================
-    // RF-009: DASHBOARD E RELATORIOS CONSOLIDADOS
-    // =========================================================================
-
     @GetMapping("/dashboard")
     public ResponseEntity<Map<String, Object>> obterDashboard(@RequestParam(required = false) String mes) {
         Long grupoId = controleAcesso.grupoId();
         return ResponseEntity.ok(financeiroService.obterDashboardConsolidado(grupoId, mes));
     }
-
-    // =========================================================================
-    // RF-002, RN-001, RN-002: CONTAS E CARTOES
-    // =========================================================================
 
     @GetMapping("/contas")
     public ResponseEntity<List<Conta>> listarContas() {
@@ -127,10 +114,6 @@ public class FinFamilyController {
         return ResponseEntity.ok(Map.of("mensagem", "Conta excluída com sucesso (RN-002 verificada: saldo zero)."));
     }
 
-    // =========================================================================
-    // RF-004: CATEGORIAS E TAGS
-    // =========================================================================
-
     @GetMapping("/categorias")
     public ResponseEntity<List<Map<String, Object>>> listarCategoriasArvore() {
         Long grupoId = controleAcesso.grupoId();
@@ -186,10 +169,6 @@ public class FinFamilyController {
         financeiroService.excluirTag(id);
         return ResponseEntity.ok(Map.of("mensagem", "Tag excluída com sucesso."));
     }
-
-    // =========================================================================
-    // RF-003 e RN-003: TRANSACOES (COM PARCELAMENTO E RECORRENCIA)
-    // =========================================================================
 
     @GetMapping("/transacoes")
     public ResponseEntity<List<Transacao>> listarTransacoes(@RequestParam(required = false) Long contaId,
@@ -253,10 +232,6 @@ public class FinFamilyController {
         return ResponseEntity.ok(Map.of("mensagem", "Transação excluída com sucesso."));
     }
 
-    // =========================================================================
-    // RF-005 e OE2: IMPORTACAO DE EXTRATOS CSV (BPMN FIGURA 1 E UC05)
-    // =========================================================================
-
     @PostMapping("/importacao/analisar")
     public ResponseEntity<Map<String, Object>> analisarCsvTexto(@RequestBody Map<String, Object> body) {
         Long grupoId = controleAcesso.grupoId();
@@ -297,10 +272,6 @@ public class FinFamilyController {
         return ResponseEntity.ok(financeiroService.importarArquivoCSVDireto(grupoId, contaId, conteudoCsv, autorId));
     }
 
-    // =========================================================================
-    // RF-006 e RN-004: ORCAMENTOS MENSAIS (BUDGETING)
-    // =========================================================================
-
     @GetMapping("/orcamentos")
     public ResponseEntity<List<Orcamento>> listarOrcamentos(@RequestParam(required = false) String mes) {
         Long grupoId = controleAcesso.grupoId();
@@ -323,10 +294,6 @@ public class FinFamilyController {
         financeiroService.excluirOrcamento(id);
         return ResponseEntity.ok(Map.of("mensagem", "Orçamento excluído com sucesso."));
     }
-
-    // =========================================================================
-    // RF-007 e OE4: GRUPO FAMILIAR (BPMN FIGURA 2)
-    // =========================================================================
 
     @GetMapping("/grupo/membros")
     public ResponseEntity<List<Membro>> listarMembros() {
@@ -364,10 +331,6 @@ public class FinFamilyController {
         controleAcesso.exigirPapelAtribuivel(papel);
         return ResponseEntity.ok(financeiroService.alterarStatusMembro(id, status, papel));
     }
-
-    // =========================================================================
-    // RF-008 e RN-005: INVESTIMENTOS E PROVENTOS (BPMN FIGURA 3)
-    // =========================================================================
 
     @GetMapping("/investimentos/carteira")
     public ResponseEntity<Map<String, Object>> consultarCarteira() {
@@ -415,10 +378,6 @@ public class FinFamilyController {
         ));
     }
 
-    // =========================================================================
-    // RF-011: CENTRAL DE ALERTAS E NOTIFICACOES
-    // =========================================================================
-
     @GetMapping("/notificacoes")
     public ResponseEntity<List<Notificacao>> listarNotificacoes() {
         Long grupoId = controleAcesso.grupoId();
@@ -442,10 +401,6 @@ public class FinFamilyController {
     public ResponseEntity<List<Notificacao>> acionarVerificacaoVencimentos() {
         return ResponseEntity.ok(financeiroService.verificarVencimentosCartoesAgendado());
     }
-
-    // =========================================================================
-    // RF-012, RN-006 e OE5: ASSISTENTE CONVERSACIONAL COM IA (BPMN FIGURA 4)
-    // =========================================================================
 
     @PostMapping("/assistente/interpretar")
     public ResponseEntity<Comando> interpretarComandoIA(@RequestBody Map<String, Object> body) {
@@ -498,10 +453,6 @@ public class FinFamilyController {
         return ResponseEntity.ok(assistenteIAService.executarBateria50ComandosTeste(grupoId));
     }
 
-    // =========================================================================
-    // RF-010: EXPORTACAO DE DADOS EM PDF, CSV E EXCEL (.XLSX)
-    // =========================================================================
-
     @GetMapping("/exportacao/csv")
     public ResponseEntity<byte[]> exportarCsv(@RequestParam(required = false) String mes) {
         Long grupoId = controleAcesso.grupoId();
@@ -531,10 +482,6 @@ public class FinFamilyController {
                 .contentType(MediaType.APPLICATION_PDF)
                 .body(bytes);
     }
-
-    // =========================================================================
-    // UC13 e RNF-007: SYSADMIN LOGS DE SEGURANCA E ROTINA DE BACKUP DIARIO
-    // =========================================================================
 
     @GetMapping("/sysadmin/logs")
     public ResponseEntity<List<AuditLog>> consultarLogsSistema() {

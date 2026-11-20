@@ -1,3 +1,4 @@
+// tela principal do sistema
 import React, { useState, useEffect, useMemo } from 'react';
 import {
   Wallet,
@@ -89,7 +90,6 @@ const PERFIS_DEMO = [
   }
 ];
 
-// Mostra qual modelo de IA interpretou o comando (ex.: "GEMINI (gemini-3.5-flash-lite)")
 function SeloModeloIA({ comando }) {
   if (!comando) return null;
   const provedor = String(comando.provedorIA || '');
@@ -115,12 +115,8 @@ function SeloModeloIA({ comando }) {
   );
 }
 
-// Sessao do usuario guardada junto com o token JWT (RF-001).
-// Usa sessionStorage, que e separado por aba: cada aba tem a propria conta, e o login
-// feito em uma aba nunca troca o usuario de outra (o localStorage seria compartilhado).
 function lerSessaoSalva() {
   try {
-    // Remove sessoes antigas compartilhadas entre abas (versoes anteriores usavam localStorage)
     localStorage.removeItem('finfamily_token');
     localStorage.removeItem('finfamily_usuario');
     const token = sessionStorage.getItem('finfamily_token');
@@ -137,7 +133,6 @@ function salvarSessao(resp) {
     const { token, ...dadosUsuario } = resp;
     sessionStorage.setItem('finfamily_usuario', JSON.stringify(dadosUsuario));
   } catch {
-    // navegador sem armazenamento: a sessao vale ate recarregar a pagina
   }
 }
 
@@ -146,11 +141,9 @@ function apagarSessao() {
     sessionStorage.removeItem('finfamily_token');
     sessionStorage.removeItem('finfamily_usuario');
   } catch {
-    // ignora
   }
 }
 
-// Aviso exibido no lugar de um formulario que o perfil logado nao pode usar (OE4)
 function CardPermissao({ titulo, texto }) {
   return (
     <div className="bg-slate-50 rounded-2xl p-5 border border-dashed border-slate-300 h-fit text-xs text-slate-600">
@@ -164,7 +157,6 @@ function CardPermissao({ titulo, texto }) {
 }
 
 export default function App() {
-  // Sessao e Autenticacao (RF-001): sem login, nenhum dado e carregado
   const [usuario, setUsuario] = useState(lerSessaoSalva);
   const [mostrarTelaLogin, setMostrarTelaLogin] = useState(() => !lerSessaoSalva());
   const [modoCadastro, setModoCadastro] = useState(false);
@@ -176,14 +168,12 @@ export default function App() {
     documentoSensivel: '123.456.789-00'
   });
 
-  // Navegacao entre Modulos
   const [abaAtiva, setAbaAtiva] = useState(() =>
     lerSessaoSalva()?.papel === 'SYSADMIN' ? 'seguranca' : 'dashboard'
   );
   const [carregando, setCarregando] = useState(false);
-  const [feedback, setFeedback] = useState(null); // { tipo: 'sucesso' | 'erro' | 'aviso', texto: '' }
+  const [feedback, setFeedback] = useState(null);
 
-  // Estados de Dados do Backend
   const [dashboard, setDashboard] = useState(null);
   const [contas, setContas] = useState([]);
   const [categoriasArvore, setCategoriasArvore] = useState([]);
@@ -198,7 +188,6 @@ export default function App() {
   const [ultimoBackup, setUltimoBackup] = useState(null);
   const [pacoteLgpd, setPacoteLgpd] = useState(null);
 
-  // Assistente Conversacional com IA (RF-012, RN-006, OE5)
   const [textoComandoIA, setTextoComandoIA] = useState('');
   const [ouvindoVoz, setOuvindoVoz] = useState(false);
   const [cardConfirmacaoIA, setCardConfirmacaoIA] = useState(null);
@@ -206,7 +195,6 @@ export default function App() {
   const [benchmark50, setBenchmark50] = useState(null);
   const [executandoBenchmark, setExecutandoBenchmark] = useState(false);
 
-  // Filtros de Transacoes
   const [filtroTransacao, setFiltroTransacao] = useState({
     busca: '',
     contaId: '',
@@ -215,7 +203,6 @@ export default function App() {
     periodo: 'mes_atual'
   });
 
-  // Formularios dos Modulos
   const [novaConta, setNovaConta] = useState({
     nome: '',
     instituicao: '',
@@ -239,13 +226,11 @@ export default function App() {
     frequenciaRecorrencia: 'MENSAL'
   });
 
-  // Importacao CSV (RF-005, BPMN Figura 1)
   const [csvContaId, setCsvContaId] = useState('');
   const [csvConteudo, setCsvConteudo] = useState(EXTRATO_EXEMPLO_CSV);
   const [csvAnalise, setCsvAnalise] = useState(null);
   const [csvUltimoResultado, setCsvUltimoResultado] = useState(null);
 
-  // Categorias e Tags (RF-004)
   const [novaCategoria, setNovaCategoria] = useState({
     nome: '',
     cor: '#3B82F6',
@@ -254,21 +239,18 @@ export default function App() {
   });
   const [novaTag, setNovaTag] = useState({ nome: '', cor: '#6366F1' });
 
-  // Orcamentos (RF-006, RN-004)
   const [novoOrcamento, setNovoOrcamento] = useState({
     categoriaId: '',
     mes: new Date().toISOString().slice(0, 7),
     valorPlanejado: ''
   });
 
-  // Grupo Familiar (RF-007)
   const [novoMembro, setNovoMembro] = useState({
     nome: '',
     email: '',
     papel: 'MEMBRO'
   });
 
-  // Investimentos (RF-008, RN-005)
   const [novaOperacaoInv, setNovaOperacaoInv] = useState({
     ticker: 'PETR4',
     tipo: 'COMPRA',
@@ -285,7 +267,6 @@ export default function App() {
   const isSomenteLeituraAuditor = usuario?.papel === 'AUDITOR';
   const isSysadmin = usuario?.papel === 'SYSADMIN';
   const isTitular = usuario?.papel === 'TITULAR';
-  // Permissoes na tela espelham as regras do back-end (SecurityConfig): so mostra o que o perfil pode fazer
   const podeLancar = isTitular || usuario?.papel === 'MEMBRO';
 
   const exibirMensagem = (tipo, texto) => {
@@ -300,7 +281,6 @@ export default function App() {
     setCarregando(true);
     try {
       if (papel === 'SYSADMIN') {
-        // O Sysadmin so acessa logs tecnicos e backup (UC13), nunca dados financeiros
         setLogsSysadmin(await api.getLogsSysadmin());
         return;
       }
@@ -407,13 +387,11 @@ export default function App() {
       setAbaAtiva('dashboard');
     }
     exibirMensagem('sucesso', mensagem);
-    // Convidado ainda nao ve os dados do grupo: so a tela de convite
     if (resp.statusMembro !== 'CONVIDADO') {
       carregarTudo(resp.papel);
     }
   };
 
-  // OE4: trocar de perfil exige autenticacao de verdade; o botao apenas preenche o e-mail
   const trocarPerfilDemo = (perfil) => {
     setModoCadastro(false);
     setFormAuth((f) => ({ ...f, email: perfil.email, senha: '' }));
@@ -442,10 +420,6 @@ export default function App() {
     }
   };
 
-  // =========================================================================
-  // HANDLERS DO ASSISTENTE CONVERSACIONAL COM IA (RF-012, RN-006, OE5)
-  // =========================================================================
-
   const handleInterpretarComandoIA = async (e, comandoDireto) => {
     if (e) e.preventDefault();
     const texto = comandoDireto !== undefined ? comandoDireto : textoComandoIA;
@@ -457,11 +431,9 @@ export default function App() {
       const cmd = await api.interpretarIA(texto, 1);
 
       if (cmd.intencao === 'registrar') {
-        // RN-006: Exibe o card preenchido para confirmacao obrigatoria do usuario!
         setCardConfirmacaoIA(cmd);
         exibirMensagem('aviso', 'RN-006: Confira os dados no card abaixo e clique em Confirmar para gravar o lançamento.');
       } else if (cmd.intencao === 'consultar') {
-        // RN-006: Consultas apenas leem dados no banco local do FinFamily
         const resConsulta = await api.executarIA({ ...cmd, confirmado: true, grupoId: 1 });
         setResultadoConsultaIA({ comando: cmd, resposta: resConsulta });
       } else {
@@ -541,10 +513,6 @@ export default function App() {
       setExecutandoBenchmark(false);
     }
   };
-
-  // =========================================================================
-  // HANDLERS DOS DEMAIS MODULOS
-  // =========================================================================
 
   const handleCriarConta = async (e) => {
     e.preventDefault();
@@ -726,15 +694,10 @@ export default function App() {
     [notificacoes]
   );
 
-  // =========================================================================
-  // RENDERIZACAO DA TELA DE LOGIN / CADASTRO (RF-001)
-  // =========================================================================
-
   if (mostrarTelaLogin) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-slate-900 via-blue-950 to-slate-900 flex items-center justify-center p-4">
         <div className="max-w-4xl w-full grid md:grid-cols-2 bg-white rounded-2xl shadow-2xl overflow-hidden border border-slate-200">
-          {/* Coluna Esquerda: Institucional FinFamily */}
           <div className="bg-gradient-to-br from-blue-700 to-indigo-900 text-white p-8 flex flex-col justify-between">
             <div>
               <div className="flex items-center gap-3 mb-6">
@@ -783,7 +746,6 @@ export default function App() {
             </div>
           </div>
 
-          {/* Coluna Direita: Formulario RF-001 */}
           <div className="p-8 flex flex-col justify-center">
             <div className="flex items-center justify-between mb-6">
               <h3 className="text-xl font-bold text-slate-900">
@@ -870,10 +832,6 @@ export default function App() {
     );
   }
 
-  // =========================================================================
-  // LAYOUT PRINCIPAL RESPONSIVO (RNF-005: MOBILE-FIRST A ULTRAWIDE)
-  // =========================================================================
-
   const itensMenu = [
     { id: 'dashboard', label: 'Painel & Assistente IA', icon: Bot, badge: 'RF-012' },
     { id: 'contas', label: 'Contas e Cartões', icon: CreditCard, badge: 'RF-002' },
@@ -886,9 +844,8 @@ export default function App() {
     { id: 'relatorios', label: 'Relatórios & Exportar', icon: FileSpreadsheet, badge: 'RF-010' },
     { id: 'notificacoes', label: 'Alertas', icon: Bell, badge: naoLidasCount > 0 ? String(naoLidasCount) : 'RF-011' },
     { id: 'seguranca', label: 'LGPD & Sysadmin', icon: ShieldCheck, badge: 'UC13' }
-  ].filter((item) => !isSysadmin || item.id === 'seguranca'); // Sysadmin nao acessa dados financeiros (Secao 2.9)
+  ].filter((item) => !isSysadmin || item.id === 'seguranca');
 
-  // RF-007 e BPMN Figura 2: o convidado responde ao proprio convite antes de acessar o grupo
   if (usuario?.statusMembro === 'CONVIDADO') {
     const responderMeuConvite = async (aceitar) => {
       try {
@@ -941,7 +898,6 @@ export default function App() {
 
   return (
     <div className="min-h-screen bg-slate-50 flex flex-col">
-      {/* Barra Superior Executiva */}
       <header className="bg-slate-900 text-white border-b border-slate-800 sticky top-0 z-30">
         <div className="max-w-[1600px] mx-auto px-4 py-2.5 flex flex-wrap items-center justify-between gap-3">
           <div className="flex items-center gap-3">
@@ -961,7 +917,6 @@ export default function App() {
             </div>
           </div>
 
-          {/* Seletor Rapido de Perfis (OE4: Titular, Membro, Auditor, Sysadmin) */}
           <div className="flex flex-wrap items-center gap-2">
             <span className="text-[11px] text-slate-400 hidden lg:inline">Alternar Perfil (OE4):</span>
             {PERFIS_DEMO.map((p) => {
@@ -1007,7 +962,6 @@ export default function App() {
           </div>
         </div>
 
-        {/* Navegacao Horizontal de Modulos */}
         <div className="bg-slate-800/80 border-t border-slate-800">
           <div className="max-w-[1600px] mx-auto px-4 flex items-center gap-1 overflow-x-auto py-1.5">
             {itensMenu.map((item) => {
@@ -1039,7 +993,6 @@ export default function App() {
         </div>
       </header>
 
-      {/* Banner de Feedback e Status de Perfil */}
       <div className="max-w-[1600px] w-full mx-auto px-4 pt-3">
         {isSomenteLeituraAuditor && (
           <div className="mb-3 bg-amber-50 border border-amber-300 text-amber-900 px-4 py-2.5 rounded-xl text-xs flex items-center justify-between">
@@ -1077,14 +1030,9 @@ export default function App() {
         )}
       </div>
 
-      {/* Conteudo Principal por Aba */}
       <main className="max-w-[1600px] w-full mx-auto px-4 py-3 flex-1 space-y-5">
-        {/* ===================================================================
-            ABA 1: DASHBOARD PRINCIPAL + ASSISTENTE CONVERSACIONAL IA (RF-009, RF-012)
-           =================================================================== */}
         {abaAtiva === 'dashboard' && (
           <>
-            {/* Secao do Assistente Conversacional com IA (RF-012, RN-006, Secao 11) */}
             <section className="bg-gradient-to-r from-slate-900 via-blue-950 to-indigo-950 text-white rounded-2xl p-5 shadow-lg border border-blue-800/40">
               <div className="flex flex-wrap items-center justify-between gap-2 mb-3">
                 <div className="flex items-center gap-2.5">
@@ -1149,7 +1097,6 @@ export default function App() {
                 <p className="text-xs text-blue-200 bg-white/10 rounded-xl px-4 py-3">O perfil Auditor tem acesso somente de leitura: o assistente registra e consulta lançamentos apenas para o Titular e o Membro (RN-006).</p>
               )}
 
-              {/* Sugestoes Rapidas da Secao 11.1 do Artigo */}
               {podeLancar && (
                 <div className="mt-3 flex flex-wrap items-center gap-1.5 text-xs">
                   <span className="text-blue-300/80 text-[11px] mr-1">Exemplos do Artigo:</span>
@@ -1174,7 +1121,6 @@ export default function App() {
                 </div>
               )}
 
-              {/* CARD DE CONFIRMACAO OBRIGATORIA DO ASSISTENTE IA (RN-006) */}
               {cardConfirmacaoIA && (
                 <div className="mt-4 bg-white text-slate-900 rounded-xl p-4 shadow-xl border-2 border-amber-400">
                   <div className="flex flex-wrap items-center justify-between gap-2 pb-3 mb-3 border-b border-slate-200">
@@ -1293,7 +1239,6 @@ export default function App() {
                 </div>
               )}
 
-              {/* RESULTADO DE CONSULTA DO ASSISTENTE IA (RN-006 / UC12) */}
               {resultadoConsultaIA && (
                 <div className="mt-4 bg-white text-slate-900 rounded-xl p-4 shadow-xl border border-blue-300">
                   <div className="flex items-center justify-between mb-2">
@@ -1338,7 +1283,6 @@ export default function App() {
                 </div>
               )}
 
-              {/* PAINEL DE RESULTADO DOS 50 COMANDOS DE TESTE (META OE5) */}
               {benchmark50 && (
                 <div className="mt-4 bg-white text-slate-900 rounded-xl p-4 shadow-xl border-2 border-emerald-400">
                   <div className="flex flex-wrap items-center justify-between gap-2 mb-3">
@@ -1407,7 +1351,6 @@ export default function App() {
               )}
             </section>
 
-            {/* Cards Executivos de Patrimonio Liquido e Fluxo de Caixa (RF-009, RN-001) */}
             <section className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
               <div className="bg-white rounded-2xl p-5 shadow-sm border border-slate-200">
                 <div className="flex items-center justify-between mb-2">
@@ -1483,9 +1426,7 @@ export default function App() {
               </div>
             </section>
 
-            {/* Graficos Interativos: Evolucao Patrimonial e Fluxo de Caixa (RF-009) */}
             <section className="grid grid-cols-1 lg:grid-cols-2 gap-5">
-              {/* Grafico 1: Evolucao Patrimonial e Fluxo de Caixa Mensal */}
               <div className="bg-white rounded-2xl p-5 shadow-sm border border-slate-200">
                 <div className="flex items-center justify-between mb-4">
                   <div>
@@ -1529,7 +1470,6 @@ export default function App() {
                 </div>
               </div>
 
-              {/* Grafico 2: Acompanhamento de Orcamentos e Gatilhos 80% / 100% (RF-006, RN-004) */}
               <div className="bg-white rounded-2xl p-5 shadow-sm border border-slate-200">
                 <div className="flex items-center justify-between mb-4">
                   <div>
@@ -1595,9 +1535,6 @@ export default function App() {
           </>
         )}
 
-        {/* ===================================================================
-            ABA 2: GESTAO DE CONTAS E CARTOES (RF-002, OE1, RN-001, RN-002)
-           =================================================================== */}
         {abaAtiva === 'contas' && (
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
             <div className="lg:col-span-2 space-y-4">
@@ -1662,7 +1599,7 @@ export default function App() {
                           >
                             {c.privada ? 'Tornar Compartilhada' : 'Marcar como Privada (RN-001)'}
                           </button>
-  
+
                           <button
                             onClick={() => handleExcluirConta(c)}
                             className={`px-2.5 py-1 rounded-lg font-semibold flex items-center gap-1 ${
@@ -1683,7 +1620,6 @@ export default function App() {
               </div>
             </div>
 
-            {/* Formulario de Nova Conta */}
             {isTitular ? (
               <div className="bg-white rounded-2xl p-5 shadow-sm border border-slate-200 h-fit">
                 <h3 className="text-sm font-bold text-slate-900 mb-3">Cadastrar Nova Conta / Cartão (RF-002)</h3>
@@ -1734,7 +1670,7 @@ export default function App() {
                       />
                     </div>
                   </div>
-  
+
                   {novaConta.tipo === 'CARTAO_CREDITO' && (
                     <div className="grid grid-cols-2 gap-2">
                       <div>
@@ -1760,7 +1696,7 @@ export default function App() {
                       </div>
                     </div>
                   )}
-  
+
                   <label className="flex items-center gap-2 p-2.5 rounded-lg bg-amber-50 border border-amber-200 cursor-pointer">
                     <input
                       type="checkbox"
@@ -1771,7 +1707,7 @@ export default function App() {
                       Marcar como Conta Privada (RN-001: não soma no Patrimônio Global)
                     </span>
                   </label>
-  
+
                   <button
                     type="submit"
                     className="w-full py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-lg shadow transition"
@@ -1786,9 +1722,6 @@ export default function App() {
           </div>
         )}
 
-        {/* ===================================================================
-            ABA 3: LANCAMENTO DE TRANSACOES, PARCELAMENTO E RECORRENCIA (RF-003, RN-003)
-           =================================================================== */}
         {abaAtiva === 'transacoes' && (
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
             <div className="lg:col-span-2 bg-white rounded-2xl p-5 shadow-sm border border-slate-200">
@@ -1803,7 +1736,6 @@ export default function App() {
                 </div>
               </div>
 
-              {/* Barra de Filtros */}
               <div className="grid grid-cols-1 sm:grid-cols-4 gap-2 mb-4 text-xs">
                 <input
                   type="text"
@@ -1906,7 +1838,6 @@ export default function App() {
               </div>
             </div>
 
-            {/* Formulario de Novo Lancamento com Parcelamento Automatico (RN-003) */}
             {podeLancar ? (
               <div className="bg-white rounded-2xl p-5 shadow-sm border border-slate-200 h-fit">
                 <h3 className="text-sm font-bold text-slate-900 mb-3">
@@ -2000,7 +1931,7 @@ export default function App() {
                       ))}
                     </select>
                   </div>
-  
+
                   <label className="flex items-center gap-2 p-2.5 rounded-lg bg-slate-50 border border-slate-200 cursor-pointer">
                     <input
                       type="checkbox"
@@ -2011,7 +1942,7 @@ export default function App() {
                       Lançamento Recorrente Mensal (ex: Aluguel, Assinatura)
                     </span>
                   </label>
-  
+
                   <button
                     type="submit"
                     className="w-full py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-lg shadow transition"
@@ -2026,9 +1957,6 @@ export default function App() {
           </div>
         )}
 
-        {/* ===================================================================
-            ABA 4: IMPORTACAO DE EXTRATOS CSV (RF-005, OE2, BPMN FIGURA 1, UC05)
-           =================================================================== */}
         {abaAtiva === 'importacao' && (
           <div className="bg-white rounded-2xl p-5 shadow-sm border border-slate-200 space-y-4">
             <div>
@@ -2057,7 +1985,7 @@ export default function App() {
                       ))}
                     </select>
                   </div>
-  
+
                   <div>
                     <div className="flex items-center justify-between mb-1">
                       <label className="font-semibold text-slate-700">
@@ -2084,7 +2012,7 @@ export default function App() {
                       className="w-full p-3 border border-slate-300 rounded-lg font-mono text-xs"
                     />
                   </div>
-  
+
                   <div className="flex gap-2">
                     <button
                       type="button"
@@ -2102,13 +2030,12 @@ export default function App() {
                     </button>
                   </div>
                 </div>
-  
-                {/* Painel de Revisao de Categorias antes da Confirmacao (BPMN Figura 1) */}
+
                 <div className="bg-slate-50 rounded-xl p-4 border border-slate-200">
                   <h3 className="text-sm font-bold text-slate-900 mb-2">
                     3. Revisão de Categorias e Conciliação de Duplicidades (UC05)
                   </h3>
-  
+
                   {csvAnalise ? (
                     <div className="space-y-3">
                       <div className="grid grid-cols-3 gap-2 text-center">
@@ -2127,7 +2054,7 @@ export default function App() {
                           <div className="text-[10px] text-amber-800">Duplicadas Descartadas (OE2)</div>
                         </div>
                       </div>
-  
+
                       {csvAnalise.transacoesParaRevisao.length > 0 && (
                         <div className="max-h-48 overflow-y-auto bg-white rounded-lg border border-slate-200">
                           <table className="w-full text-xs">
@@ -2168,7 +2095,7 @@ export default function App() {
                           </table>
                         </div>
                       )}
-  
+
                       <button
                         type="button"
                         onClick={handleConfirmarCsv}
@@ -2199,9 +2126,6 @@ export default function App() {
           </div>
         )}
 
-        {/* ===================================================================
-            ABA 5: ORCAMENTOS MENSAIS E ALERTAS 80% / 100% (RF-006, RN-004, OE3)
-           =================================================================== */}
         {abaAtiva === 'orcamentos' && (
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
             <div className="lg:col-span-2 bg-white rounded-2xl p-5 shadow-sm border border-slate-200 space-y-4">
@@ -2326,13 +2250,9 @@ export default function App() {
           </div>
         )}
 
-        {/* ===================================================================
-            ABA 6: INVESTIMENTOS E PROVENTOS (RF-008, RN-005, BPMN FIGURA 3)
-           =================================================================== */}
         {abaAtiva === 'investimentos' && (
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
             <div className="lg:col-span-2 space-y-4">
-              {/* Resumo da Carteira */}
               <div className="grid grid-cols-1 sm:grid-cols-4 gap-3">
                 <div className="bg-white p-4 rounded-xl border border-slate-200">
                   <div className="text-[11px] text-slate-500">Custo de Aquisição</div>
@@ -2360,7 +2280,6 @@ export default function App() {
                 </div>
               </div>
 
-              {/* Tabela de Posicoes por Ativo (Ticker) */}
               <div className="bg-white rounded-2xl p-5 shadow-sm border border-slate-200">
                 <h2 className="text-base font-bold text-slate-900 mb-3">
                   Posição Consolidada da Carteira por Ativo / Ticker (RF-008 & BPMN Figura 3)
@@ -2401,7 +2320,6 @@ export default function App() {
               </div>
             </div>
 
-            {/* Formulario de Operacao de Investimento e Provento (RN-005) */}
             {isTitular ? (
               <div className="bg-white rounded-2xl p-5 shadow-sm border border-slate-200 h-fit">
                 <h3 className="text-sm font-bold text-slate-900 mb-1">
@@ -2410,7 +2328,7 @@ export default function App() {
                 <p className="text-[11px] text-slate-500 mb-3">
                   RN-005: Ao lançar um PROVENTO, o sistema gera automaticamente uma Receita na conta de destino!
                 </p>
-  
+
                 <form onSubmit={handleRegistrarInvestimento} className="space-y-3 text-xs">
                   <div className="grid grid-cols-2 gap-2">
                     <div>
@@ -2440,7 +2358,7 @@ export default function App() {
                       </select>
                     </div>
                   </div>
-  
+
                   <div className="grid grid-cols-2 gap-2">
                     <div>
                       <label className="font-semibold text-slate-700 block mb-1">Quantidade / Cotas</label>
@@ -2467,7 +2385,7 @@ export default function App() {
                       />
                     </div>
                   </div>
-  
+
                   <div>
                     <label className="font-semibold text-slate-700 block mb-1">
                       Conta de Destino do Provento (RN-005)
@@ -2484,7 +2402,7 @@ export default function App() {
                       ))}
                     </select>
                   </div>
-  
+
                   <button
                     type="submit"
                     className="w-full py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-lg shadow transition"
@@ -2499,9 +2417,6 @@ export default function App() {
           </div>
         )}
 
-        {/* ===================================================================
-            ABA 7: ARVORE DE CATEGORIAS E TAGS (RF-004)
-           =================================================================== */}
         {abaAtiva === 'categorias' && (
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
             <div className="lg:col-span-2 bg-white rounded-2xl p-5 shadow-sm border border-slate-200 space-y-4">
@@ -2637,9 +2552,6 @@ export default function App() {
           </div>
         )}
 
-        {/* ===================================================================
-            ABA 8: GRUPO FAMILIAR E PERMISSOES (RF-007, OE4, BPMN FIGURA 2)
-           =================================================================== */}
         {abaAtiva === 'grupo' && (
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
             <div className="lg:col-span-2 bg-white rounded-2xl p-5 shadow-sm border border-slate-200">
@@ -2786,9 +2698,6 @@ export default function App() {
           </div>
         )}
 
-        {/* ===================================================================
-            ABA 9: RELATORIOS E EXPORTACAO EM PDF, CSV E EXCEL (RF-009, RF-010)
-           =================================================================== */}
         {abaAtiva === 'relatorios' && (
           <div className="bg-white rounded-2xl p-6 shadow-sm border border-slate-200 space-y-5">
             <div>
@@ -2818,7 +2727,7 @@ export default function App() {
                   </div>
                   <FileText className="w-8 h-8 text-rose-600 shrink-0" />
                 </button>
-  
+
                 <button
                   type="button"
                   onClick={() => baixarExportacao('excel')}
@@ -2835,7 +2744,7 @@ export default function App() {
                   </div>
                   <FileSpreadsheet className="w-8 h-8 text-emerald-600 shrink-0" />
                 </button>
-  
+
                 <button
                   type="button"
                   onClick={() => baixarExportacao('csv')}
@@ -2859,9 +2768,6 @@ export default function App() {
           </div>
         )}
 
-        {/* ===================================================================
-            ABA 10: CENTRAL DE ALERTAS E NOTIFICACOES (RF-011, RN-004)
-           =================================================================== */}
         {abaAtiva === 'notificacoes' && (
           <div className="bg-white rounded-2xl p-5 shadow-sm border border-slate-200 space-y-4">
             <div className="flex flex-wrap items-center justify-between gap-2">
@@ -2934,13 +2840,9 @@ export default function App() {
           </div>
         )}
 
-        {/* ===================================================================
-            ABA 11: SEGURANCA AES-256, LGPD E SYSADMIN (RNF-003, RNF-004, RNF-007, UC13)
-           =================================================================== */}
         {abaAtiva === 'seguranca' && (
           <div className="space-y-5">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-              {/* Bloco LGPD (RNF-004) */}
               <div className="bg-white rounded-2xl p-5 shadow-sm border border-slate-200 space-y-3">
                 <div className="flex items-center gap-2">
                   <ShieldCheck className="w-5 h-5 text-blue-600" />
@@ -2972,7 +2874,6 @@ export default function App() {
                 )}
               </div>
 
-              {/* Bloco Backup Diario (RNF-007) */}
               {isSysadmin && (
                 <div className="bg-white rounded-2xl p-5 shadow-sm border border-slate-200 space-y-3">
                   <div className="flex items-center gap-2">
@@ -2984,7 +2885,7 @@ export default function App() {
                   <p className="text-xs text-slate-600">
                     Backups automáticos diários com retenção mínima de 30 dias. Dados sensíveis armazenados com criptografia AES-256-GCM (RNF-003).
                   </p>
-  
+
                   <button
                     onClick={async () => {
                       const res = await api.executarBackupDiario();
@@ -2996,7 +2897,7 @@ export default function App() {
                   >
                     Executar Backup Agora (Retenção 30 Dias)
                   </button>
-  
+
                   {ultimoBackup && (
                     <div className="p-3 rounded-lg bg-emerald-50 border border-emerald-200 text-xs text-emerald-900">
                       <div><strong>Arquivo:</strong> {ultimoBackup.arquivoGerado}</div>
@@ -3008,7 +2909,6 @@ export default function App() {
               )}
             </div>
 
-            {/* Bloco Sysadmin Logs (UC13) */}
             {isSysadmin && (
               <div className="bg-white rounded-2xl p-5 shadow-sm border border-slate-200">
                 <div className="flex items-center justify-between mb-3">
@@ -3021,7 +2921,7 @@ export default function App() {
                     </p>
                   </div>
                 </div>
-  
+
                 <div className="max-h-64 overflow-y-auto border border-slate-200 rounded-lg">
                   <table className="w-full text-xs">
                     <thead className="bg-slate-100 text-slate-700 sticky top-0">
@@ -3066,7 +2966,6 @@ export default function App() {
         )}
       </main>
 
-      {/* Rodape Academico UCSAL */}
       <footer className="bg-white border-t border-slate-200 py-3 px-4 mt-8 text-xs text-slate-500">
         <div className="max-w-[1600px] mx-auto flex flex-wrap items-center justify-between gap-2">
           <span>

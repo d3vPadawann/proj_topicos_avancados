@@ -1,11 +1,11 @@
+// chamadas a API
 const API_BASE = '/api';
 
 function getHeaders() {
   let token = null;
   try {
-    token = sessionStorage.getItem('finfamily_token'); // sessao separada por aba
+    token = sessionStorage.getItem('finfamily_token');
   } catch {
-    // navegador sem armazenamento
   }
   const headers = { 'Content-Type': 'application/json' };
   if (token) {
@@ -23,7 +23,6 @@ async function request(path, options = {}) {
     },
   });
   if (res.status === 401 && !path.startsWith('/auth/login')) {
-    // Token ausente, invalido ou expirado: volta para a tela de login
     window.dispatchEvent(new Event('finfamily:sessao-expirada'));
   }
   if (!res.ok) {
@@ -32,14 +31,12 @@ async function request(path, options = {}) {
       const errJson = await res.json();
       errMsg = errJson.mensagem || errJson.erro || errMsg;
     } catch {
-      // ignore
     }
     throw new Error(errMsg);
   }
   return res.json();
 }
 
-// Baixa um arquivo da API enviando o token JWT (usado nas exportacoes PDF, Excel e CSV)
 async function baixar(path, nomeArquivo) {
   const res = await fetch(`${API_BASE}${path}`, { headers: getHeaders() });
   if (res.status === 401) {
@@ -51,7 +48,6 @@ async function baixar(path, nomeArquivo) {
       const errJson = await res.json();
       errMsg = errJson.mensagem || errMsg;
     } catch {
-      // ignore
     }
     throw new Error(errMsg);
   }
@@ -68,7 +64,6 @@ async function baixar(path, nomeArquivo) {
 
 export const api = {
   baixar,
-  // Autenticacao e LGPD (RF-001, RNF-004)
   login: (email, senha) =>
     request('/auth/login', { method: 'POST', body: JSON.stringify({ email, senha }) }),
   register: (payload) =>
@@ -78,11 +73,9 @@ export const api = {
   deleteAccountLgpd: (usuarioId) =>
     request(`/auth/lgpd/delete/${usuarioId}`, { method: 'DELETE' }),
 
-  // Dashboard (RF-009, RN-001)
   getDashboard: (grupoId = 1, mes = '') =>
     request(`/dashboard?grupoId=${grupoId}${mes ? `&mes=${mes}` : ''}`),
 
-  // Contas e Cartoes (RF-002, RN-001, RN-002)
   getContas: (grupoId = 1) => request(`/contas?grupoId=${grupoId}`),
   createConta: (payload) =>
     request('/contas', { method: 'POST', body: JSON.stringify(payload) }),
@@ -90,7 +83,6 @@ export const api = {
     request(`/contas/${id}`, { method: 'PUT', body: JSON.stringify(payload) }),
   deleteConta: (id) => request(`/contas/${id}`, { method: 'DELETE' }),
 
-  // Categorias e Tags (RF-004)
   getCategoriasArvore: (grupoId = 1) => request(`/categorias?grupoId=${grupoId}`),
   getCategoriasPlanas: (grupoId = 1) => request(`/categorias/planas?grupoId=${grupoId}`),
   createCategoria: (payload) =>
@@ -101,7 +93,6 @@ export const api = {
     request('/tags', { method: 'POST', body: JSON.stringify(payload) }),
   deleteTag: (id) => request(`/tags/${id}`, { method: 'DELETE' }),
 
-  // Transacoes (RF-003, RN-003)
   getTransacoes: (params = {}) => {
     const q = new URLSearchParams();
     q.set('grupoId', params.grupoId || 1);
@@ -116,20 +107,17 @@ export const api = {
     request('/transacoes', { method: 'POST', body: JSON.stringify(payload) }),
   deleteTransacao: (id) => request(`/transacoes/${id}`, { method: 'DELETE' }),
 
-  // Importacao CSV (RF-005, OE2, BPMN Figura 1)
   analisarCsv: (payload) =>
     request('/importacao/analisar', { method: 'POST', body: JSON.stringify(payload) }),
   confirmarCsv: (payload) =>
     request('/importacao/confirmar', { method: 'POST', body: JSON.stringify(payload) }),
 
-  // Orcamentos (RF-006, RN-004, OE3)
   getOrcamentos: (grupoId = 1, mes = '') =>
     request(`/orcamentos?grupoId=${grupoId}${mes ? `&mes=${mes}` : ''}`),
   saveOrcamento: (payload) =>
     request('/orcamentos', { method: 'POST', body: JSON.stringify(payload) }),
   deleteOrcamento: (id) => request(`/orcamentos/${id}`, { method: 'DELETE' }),
 
-  // Grupo Familiar (RF-007, OE4, BPMN Figura 2)
   getMembros: (grupoId = 1) => request(`/grupo/membros?grupoId=${grupoId}`),
   convidarMembro: (payload) =>
     request('/grupo/convidar', { method: 'POST', body: JSON.stringify(payload) }),
@@ -144,7 +132,6 @@ export const api = {
       body: JSON.stringify(payload),
     }),
 
-  // Investimentos e Proventos (RF-008, RN-005, BPMN Figura 3)
   getCarteira: (grupoId = 1) => request(`/investimentos/carteira?grupoId=${grupoId}`),
   getAtivos: () => request('/investimentos/ativos'),
   saveAtivo: (payload) =>
@@ -152,7 +139,6 @@ export const api = {
   registrarOperacaoInvestimento: (payload) =>
     request('/investimentos/operacoes', { method: 'POST', body: JSON.stringify(payload) }),
 
-  // Notificacoes (RF-011)
   getNotificacoes: (grupoId = 1) => request(`/notificacoes?grupoId=${grupoId}`),
   marcarNotificacaoLida: (id) =>
     request(`/notificacoes/${id}/lida`, { method: 'PATCH' }),
@@ -161,7 +147,6 @@ export const api = {
   verificarVencimentos: () =>
     request('/notificacoes/verificar-vencimentos', { method: 'POST' }),
 
-  // Assistente Conversacional com IA (RF-012, RN-006, OE5, BPMN Figura 4)
   interpretarIA: (texto, grupoId = 1) =>
     request('/assistente/interpretar', {
       method: 'POST',
@@ -175,7 +160,6 @@ export const api = {
   executarBenchmark50: (grupoId = 1) =>
     request(`/assistente/benchmark-50?grupoId=${grupoId}`),
 
-  // Sysadmin & Backups (UC13, RNF-003, RNF-007)
   getLogsSysadmin: () => request('/sysadmin/logs'),
   executarBackupDiario: () => request('/sysadmin/backup', { method: 'POST' }),
 };

@@ -1,3 +1,4 @@
+// cliente HTTP do Gemini e do Ollama
 package br.ucsal.finfamily.service;
 
 import com.fasterxml.jackson.databind.JsonNode;
@@ -17,25 +18,10 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 
-/**
- * Cliente HTTP do modelo de linguagem (LLM) usado pelo Assistente Conversacional (RF-012, Secao 11.2).
- *
- * Provedores suportados (propriedade finfamily.ai.provedor):
- * - GEMINI: API do Google Gemini (exige finfamily.ai.gemini-api-key / variavel GEMINI_API_KEY);
- * - OLLAMA: modelo executado localmente pelo Ollama (o texto nao sai da maquina);
- * - AUTO (padrao): usa o Gemini se houver chave configurada; caso contrario, tenta o Ollama local;
- * - LOCAL: nao chama nenhum LLM (apenas o motor de contingencia do AssistenteIAService).
- *
- * O cliente apenas envia o prompt e devolve o JSON gerado pelo modelo. Quem grava e consulta
- * os dados e sempre o proprio FinFamily (Secao 11.2). Em caso de erro ou tempo excedido
- * devolve Optional.empty() para que o assistente acione a contingencia da Secao 11.3.
- */
 @Component
 public class ClienteLLM {
-
     private static final Logger log = LoggerFactory.getLogger(ClienteLLM.class);
 
-    /** Resposta bruta do modelo: o provedor que respondeu e o texto JSON devolvido. */
     public record RespostaLLM(String provedor, String json) {}
 
     @Value("${finfamily.ai.provedor:AUTO}")
@@ -53,7 +39,6 @@ public class ClienteLLM {
     @Value("${finfamily.ai.gemini-api-key:}")
     private String geminiApiKey;
 
-    /** Nivel de "raciocinio" do Gemini (minimal, low, medium, high). Vazio = padrao do modelo. */
     @Value("${finfamily.ai.gemini-thinking-level:}")
     private String geminiThinkingLevel;
 
@@ -65,9 +50,6 @@ public class ClienteLLM {
 
     private final ObjectMapper objectMapper = new ObjectMapper();
 
-    /**
-     * Envia o prompt ao provedor configurado e devolve o JSON gerado pelo modelo.
-     */
     public Optional<RespostaLLM> gerarJson(String prompt) {
         String escolhido = resolverProvedor();
         try {
@@ -85,7 +67,6 @@ public class ClienteLLM {
         }
     }
 
-    /** Provedor efetivamente usado, considerando a configuracao AUTO. */
     public String resolverProvedor() {
         String p = provedor == null ? "AUTO" : provedor.trim().toUpperCase();
         if ("AUTO".equals(p)) {
@@ -107,7 +88,6 @@ public class ClienteLLM {
         generationConfig.put("responseMimeType", "application/json");
         generationConfig.put("temperature", 0);
         if (geminiThinkingLevel != null && !geminiThinkingLevel.isBlank()) {
-            // Menos raciocinio = resposta mais rapida e estavel (meta de 3 s da Secao 11.3)
             generationConfig.put("thinkingConfig", Map.of("thinkingLevel", geminiThinkingLevel.trim()));
         }
         String payload = objectMapper.writeValueAsString(Map.of(
@@ -165,10 +145,6 @@ public class ClienteLLM {
         return c.length() > 300 ? c.substring(0, 300) + "..." : c;
     }
 
-    /**
-     * Um unico HttpClient reaproveita a conexao TLS entre as chamadas (keep-alive),
-     * evitando refazer o handshake com o servidor da IA a cada comando.
-     */
     private volatile HttpClient httpClient;
 
     private HttpClient novoHttpClient() {

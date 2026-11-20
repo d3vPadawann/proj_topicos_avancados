@@ -1,3 +1,4 @@
+// regras de acesso por perfil
 package br.ucsal.finfamily.security;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -27,24 +28,9 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
-/**
- * Regras de acesso por perfil (RF-001, OE4 e perfis da Secao 2.9 / casos de uso da Tabela 7):
- *
- * - Sem login: apenas login, cadastro, health e os arquivos do front-end.
- * - TITULAR: acesso total ao proprio grupo familiar.
- * - MEMBRO: le os dados do grupo, lanca transacoes, importa extratos, usa o assistente de IA
- *   e exporta relatorios; nao altera contas, categorias, orcamentos, membros nem investimentos.
- * - AUDITOR: somente leitura dos paineis e relatorios do grupo (sem exportacao, UC10).
- * - SYSADMIN: apenas logs tecnicos e backup (UC13, RNF-007), sem dados financeiros.
- * - CONVIDADO (convite ainda nao aceito): apenas responder ao proprio convite.
- *
- * A posse dos registros (se a conta/transacao pertence ao grupo do usuario) e verificada
- * pela classe ControleAcesso.
- */
 @Configuration
 @EnableWebSecurity
 public class SecurityConfig {
-
     private static final String TITULAR = "TITULAR";
     private static final String MEMBRO = "MEMBRO";
     private static final String AUDITOR = "AUDITOR";
@@ -66,40 +52,32 @@ public class SecurityConfig {
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
         http
                 .cors(cors -> cors.configurationSource(corsConfigurationSource()))
-                .csrf(AbstractHttpConfigurer::disable) // API stateless com JWT no cabecalho (sem cookies de sessao)
+                .csrf(AbstractHttpConfigurer::disable)
                 .headers(headers -> headers.frameOptions(HeadersConfigurer.FrameOptionsConfig::sameOrigin))
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> auth
-                        // Publico
+
                         .requestMatchers(HttpMethod.POST, "/api/auth/login", "/api/auth/register").permitAll()
                         .requestMatchers("/api/health", "/error").permitAll()
-                        .requestMatchers("/h2-console/**").permitAll() // console do banco de desenvolvimento (tem login proprio)
+                        .requestMatchers("/h2-console/**").permitAll()
 
-                        // LGPD: qualquer usuario logado, apenas sobre os proprios dados (verificado no controller)
                         .requestMatchers("/api/auth/lgpd/**").authenticated()
 
-                        // Sysadmin (UC13 e RNF-007)
                         .requestMatchers("/api/sysadmin/**", "/api/auth/demo-users").hasRole(SYSADMIN)
 
-                        // Convite: so o proprio convidado responde (verificado no controller)
                         .requestMatchers(HttpMethod.POST, "/api/grupo/membros/*/resposta").authenticated()
 
-                        // Exportacao (UC10): Membro e Titular
                         .requestMatchers(HttpMethod.GET, "/api/exportacao/**").hasAnyRole(TITULAR, MEMBRO)
 
-                        // Leitura dos dados do grupo: Titular, Membro e Auditor
                         .requestMatchers(HttpMethod.GET, "/api/**").hasAnyRole(TITULAR, MEMBRO, AUDITOR)
 
-                        // Operacoes do dia a dia do Membro (UC03, UC05, UC11 e UC12)
                         .requestMatchers(HttpMethod.POST, "/api/transacoes", "/api/importacao/**", "/api/assistente/**",
                                 "/api/notificacoes/ler-todas").hasAnyRole(TITULAR, MEMBRO)
                         .requestMatchers(HttpMethod.DELETE, "/api/transacoes/*").hasAnyRole(TITULAR, MEMBRO)
                         .requestMatchers(HttpMethod.PATCH, "/api/notificacoes/*/lida").hasAnyRole(TITULAR, MEMBRO)
 
-                        // Demais alteracoes (contas, categorias, tags, orcamentos, membros, investimentos): so o Titular
                         .requestMatchers("/api/**").hasRole(TITULAR)
 
-                        // Arquivos estaticos do front-end React
                         .anyRequest().permitAll()
                 )
                 .exceptionHandling(ex -> ex
@@ -138,7 +116,7 @@ public class SecurityConfig {
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration configuration = new CorsConfiguration();
-        // Front-end em desenvolvimento (Vite) e a propria aplicacao; o JWT vai no cabecalho Authorization
+
         configuration.setAllowedOriginPatterns(List.of("http://localhost:*", "http://127.0.0.1:*"));
         configuration.setAllowedMethods(List.of("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
         configuration.setAllowedHeaders(List.of("*"));

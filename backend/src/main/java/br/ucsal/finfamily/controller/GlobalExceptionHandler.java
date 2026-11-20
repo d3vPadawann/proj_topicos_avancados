@@ -1,3 +1,4 @@
+// tratamento de erros da API
 package br.ucsal.finfamily.controller;
 
 import org.springframework.http.HttpStatus;
@@ -13,7 +14,6 @@ import java.util.Map;
 
 @RestControllerAdvice
 public class GlobalExceptionHandler {
-
     @ExceptionHandler(AccessDeniedException.class)
     public ResponseEntity<Map<String, Object>> handleAccessDenied(AccessDeniedException ex) {
         return erro(HttpStatus.FORBIDDEN, "Acesso negado", ex.getMessage());

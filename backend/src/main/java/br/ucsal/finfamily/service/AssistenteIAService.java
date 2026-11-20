@@ -1,3 +1,4 @@
+// assistente conversacional com IA
 package br.ucsal.finfamily.service;
 
 import br.ucsal.finfamily.domain.enums.TipoTransacao;
@@ -17,18 +18,8 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
-/**
- * Servico AssistenteIA conforme Diagrama de Classes (Figura 5), Secao 11, BPMN Figura 4,
- * Caso de Uso UC12 (Tabela 9), RF-012, RN-006, RNF-004 e Meta OE5.
- *
- * Fluxo (Secao 11.2): monta o prompt seguro, envia ao LLM (Gemini ou Ollama, via ClienteLLM),
- * converte o JSON devolvido em um Comando e, para registros, exige a confirmacao do card (RN-006).
- * Se o LLM falhar, o motor local de regras assume como contingencia (Secao 11.3).
- */
 @Service
 public class AssistenteIAService {
-
-    /** Rotulo exibido quando o LLM nao responde e o motor de regras assume (Secao 11.3). */
     public static final String PROVEDOR_CONTINGENCIA = "CONTINGENCIA_LOCAL (regras)";
 
     private static final Set<String> PERIODOS_VALIDOS = Set.of("hoje", "semana_atual", "mes_atual", "mes_passado", "ano_atual");
@@ -44,12 +35,6 @@ public class AssistenteIAService {
         this.clienteLLM = clienteLLM;
     }
 
-    /**
-     * Metodo do Diagrama de Classes (Figura 5): interpretar(texto: String): Comando
-     * Envia apenas o texto do comando, a data de hoje e os nomes das contas e categorias (RNF-004).
-     * NUNCA envia saldos, transacoes, CPF ou numeros de conta.
-     * NUNCA grava no banco nesta etapa (RN-006).
-     */
     @Transactional(readOnly = true)
     public Comando interpretar(Long grupoId, String texto) {
         long inicioNs = System.nanoTime();
@@ -58,7 +43,6 @@ public class AssistenteIAService {
             throw new IllegalArgumentException("Fluxo Alternativo 3a (UC12): Por favor, digite ou fale um comando para o assistente.");
         }
 
-        // Regra da Secao 11.3: O assistente nao recomenda investimentos nem presta consultoria financeira
         String normCheck = normalizar(texto);
         if ((normCheck.contains("qual acao comprar") || normCheck.contains("onde devo investir")
                 || normCheck.contains("recomende um investimento") || normCheck.contains("me indique acoes"))
@@ -78,15 +62,12 @@ public class AssistenteIAService {
         List<Conta> contas = financeiroService.listarContas(grupo.getId());
         List<Categoria> categorias = financeiroService.listarTodasCategoriasPlanas(grupo.getId());
 
-        // Monta prompt seguro (RNF-004: apenas nomes de contas e categorias, sem saldos nem CPF)
         String promptSeguro = montarPromptSeguroRnf004(texto, contas, categorias);
 
-        // Secao 11.2: o LLM interpreta o texto e devolve a intencao e os campos em JSON
         Comando comando = clienteLLM.gerarJson(promptSeguro)
                 .map(r -> converterRespostaLLM(r.json(), r.provedor(), texto, contas, categorias))
                 .orElse(null);
 
-        // Secao 11.3: servico de IA indisponivel, lento (> 3s) ou resposta invalida -> motor local de contingencia
         if (comando == null) {
             comando = interpretarMotorNlpHibrido(texto, contas, categorias);
             comando.setProvedorIA(PROVEDOR_CONTINGENCIA);
@@ -105,11 +86,6 @@ public class AssistenteIAService {
         return comando;
     }
 
-    /**
-     * Converte o JSON devolvido pelo LLM em um Comando, associando os nomes de conta e categoria
-     * aos registros do grupo. Devolve null se a resposta for invalida ou incompleta, para que o
-     * assistente use a contingencia da Secao 11.3.
-     */
     Comando converterRespostaLLM(String json, String provedor, String textoOriginal,
                                  List<Conta> contas, List<Categoria> categorias) {
         JsonNode r;
@@ -173,7 +149,6 @@ public class AssistenteIAService {
             return cmd;
         }
 
-        // registrar: o valor e obrigatorio para montar o card
         BigDecimal valor;
         try {
             valor = new BigDecimal(texto(r, "valor").replace(",", ".")).abs().setScale(2, RoundingMode.HALF_UP);
@@ -184,7 +159,7 @@ public class AssistenteIAService {
             return null;
         }
 
-        cmd.setRequerConfirmacao(true); // RN-006
+        cmd.setRequerConfirmacao(true);
         cmd.setValor(valor);
 
         String descricao = texto(r, "descricao");
@@ -252,18 +227,11 @@ public class AssistenteIAService {
         return categorias.stream().filter(c -> normalizar(c.getNome()).equals(alvo)).findFirst().orElse(null);
     }
 
-    /**
-     * Metodo do Diagrama de Classes (Figura 5): executar(c: Comando): Map
-     * Implementa RN-006:
-     * - Se intencao == "registrar", EXIGE confirmacao explicita do usuario no card antes de gravar.
-     * - Se intencao == "consultar", apenas le dados no banco do FinFamily e nunca os altera.
-     */
     @Transactional
     public Map<String, Object> executar(Long grupoId, Comando comando, boolean confirmadoPeloUsuario, Long autorId) {
         GrupoFamiliar grupo = financeiroService.obterGrupoPadrao(grupoId);
 
         if ("registrar".equalsIgnoreCase(comando.getIntencao())) {
-            // RN-006: Um lancamento interpretado pelo assistente de IA so e gravado apos o usuario confirmar o card exibido
             if (!confirmadoPeloUsuario) {
                 throw new IllegalStateException(
                         "RN-006 Violada: Um lançamento interpretado pelo assistente de IA só pode ser gravado após o usuário confirmar o card exibido.");
@@ -305,7 +273,6 @@ public class AssistenteIAService {
             return resposta;
         }
 
-        // Intencao == "consultar" (RN-006: apenas leitura no banco de dados local)
         List<Transacao> filtradas = financeiroService.listarTransacoes(
                 grupo.getId(),
                 comando.getContaId(),
@@ -349,10 +316,6 @@ public class AssistenteIAService {
         return resultadoConsulta;
     }
 
-    /**
-     * Monta a instrucao (prompt) seguindo estritamente a Secao 11.2 e 11.3 (RNF-004):
-     * "So o texto do comando e os nomes das contas e categorias vao para o modelo de IA - nunca saldos, transacoes, CPF ou numeros de conta."
-     */
     public String montarPromptSeguroRnf004(String textoUsuario, List<Conta> contas, List<Categoria> categorias) {
         String nomesContas = contas.stream().map(Conta::getNome).collect(Collectors.joining(", "));
         String nomesCategorias = categorias.stream().map(Categoria::getNome).collect(Collectors.joining(", "));
@@ -383,10 +346,6 @@ public class AssistenteIAService {
         );
     }
 
-    /**
-     * Motor local de contingencia baseado em regras (Secao 11.3), usado apenas quando o servico
-     * de IA esta indisponivel, demora mais de 3 segundos ou devolve uma resposta invalida.
-     */
     private Comando interpretarMotorNlpHibrido(String texto, List<Conta> contas, List<Categoria> categorias) {
         Comando cmd = new Comando();
         cmd.setProvedorIA(PROVEDOR_CONTINGENCIA);
@@ -394,7 +353,6 @@ public class AssistenteIAService {
         String textoTrim = texto.trim();
         String norm = normalizar(textoTrim);
 
-        // 1. Determina se a intencao e CONSULTAR ou REGISTRAR
         boolean isConsulta = norm.startsWith("quanto")
                 || norm.startsWith("qual ")
                 || norm.startsWith("quais ")
@@ -421,7 +379,6 @@ public class AssistenteIAService {
             cmd.setIntencao("consultar");
             cmd.setRequerConfirmacao(false);
 
-            // Tipo (DESPESA ou RECEITA)
             if (norm.contains("recebi") || norm.contains("recebemos") || norm.contains("receita")
                     || norm.contains("ganhei") || norm.contains("ganhamos") || norm.contains("provento")
                     || norm.contains("dividendo") || norm.contains("salario")) {
@@ -430,17 +387,14 @@ public class AssistenteIAService {
                 cmd.setTipo("DESPESA");
             }
 
-            // Periodo
             cmd.setPeriodo(extrairPeriodo(norm));
 
-            // Conta mencionada na consulta
             Conta contaIdentificada = identificarContaNoTexto(norm, contas, false);
             if (contaIdentificada != null && (norm.contains("cartao") || norm.contains("conta") || norm.contains("poupanca") || norm.contains("corretora") || norm.contains(normalizar(contaIdentificada.getNome())))) {
                 cmd.setConta(contaIdentificada.getNome());
                 cmd.setContaId(contaIdentificada.getId());
             }
 
-            // Categoria ou termo de busca
             Categoria catExplicita = identificarCategoriaExplicitaNoTexto(norm, categorias);
             String termoBusca = extrairTermoBuscaConsulta(textoTrim, norm);
 
@@ -470,7 +424,6 @@ public class AssistenteIAService {
             return cmd;
         }
 
-        // 2. Intencao REGISTRAR
         BigDecimal valor = extrairValorMonetario(textoTrim);
         if (valor == null) {
             throw new IllegalArgumentException(
@@ -478,10 +431,9 @@ public class AssistenteIAService {
         }
 
         cmd.setIntencao("registrar");
-        cmd.setRequerConfirmacao(true); // RN-006
+        cmd.setRequerConfirmacao(true);
         cmd.setValor(valor);
 
-        // Determina se e RECEITA ou DESPESA
         if (norm.contains("receita") || norm.contains("recebi") || norm.contains("recebemos")
                 || norm.contains("salario") || norm.contains("provento") || norm.contains("dividendo")
                 || norm.contains("reembolso") || norm.contains("venda de") || norm.contains("freela")
@@ -491,16 +443,12 @@ public class AssistenteIAService {
             cmd.setTipo("DESPESA");
         }
 
-        // Data
         cmd.setData(extrairDataComando(norm));
 
-        // Parcelas (ex: "em 3x", "parcelado em 10 vezes", "5 parcelas")
         cmd.setParcelas(extrairNumeroParcelas(norm));
 
-        // Recorrencia
         cmd.setRecorrente(norm.contains("recorrente") || norm.contains("assinatura") || norm.contains("todo mes") || norm.contains("mensalidade"));
 
-        // Conta
         Conta conta = identificarContaNoTexto(norm, contas, true);
         if (conta != null) {
             cmd.setConta(conta.getNome());
@@ -509,11 +457,9 @@ public class AssistenteIAService {
             cmd.setConta(norm.contains("cartao") ? "Cartão de crédito" : "Conta Corrente");
         }
 
-        // Descricao limpa
         String descricaoExtraida = extrairDescricaoLancamento(textoTrim, norm);
         cmd.setDescricao(descricaoExtraida);
 
-        // Categoria
         Categoria cat = identificarCategoriaParaRegistro(norm, descricaoExtraida, cmd.getTipo(), categorias);
         if (cat != null) {
             cmd.setCategoria(cat.getPai() != null ? cat.getPai().getNome() : cat.getNome());
@@ -534,18 +480,12 @@ public class AssistenteIAService {
         return cmd;
     }
 
-    /**
-     * Bateria oficial de 50 Comandos de Teste (25 Registros + 25 Consultas) conforme Secao 11.4 e Meta OE5:
-     * "A qualidade da funcionalidade sera medida com 50 comandos de teste (25 registros e 25 consultas)
-     * escritos pela equipe com a resposta esperada. A meta e que pelo menos 80% dos comandos sejam
-     * interpretados corretamente (OE5) e que a resposta do assistente apareca em ate 3 segundos."
-     */
     @Transactional(readOnly = true)
     public Map<String, Object> executarBateria50ComandosTeste(Long grupoId) {
         record CasoTesteIA(int id, String comando, String intencaoEsperada, BigDecimal valorEsperado, String palavraChaveEsperada) {}
 
         List<CasoTesteIA> casos = List.of(
-                // 25 Comandos de REGISTRO
+
                 new CasoTesteIA(1, "Registrar gasto de R$ 45,90 na padaria hoje no cartão de crédito", "registrar", new BigDecimal("45.90"), "padaria"),
                 new CasoTesteIA(2, "Gastei 32,50 com Uber hoje no cartão", "registrar", new BigDecimal("32.50"), "uber"),
                 new CasoTesteIA(3, "Lançar despesa de R$ 480,00 no supermercado hoje na conta corrente", "registrar", new BigDecimal("480.00"), "supermercado"),
@@ -572,7 +512,6 @@ public class AssistenteIAService {
                 new CasoTesteIA(24, "Gastei R$ 250,00 na consulta médica hoje na conta corrente", "registrar", new BigDecimal("250.00"), "consulta"),
                 new CasoTesteIA(25, "Registrar despesa de R$ 19,50 com estacionamento shopping hoje no cartão", "registrar", new BigDecimal("19.50"), "estacionamento"),
 
-                // 25 Comandos de CONSULTA
                 new CasoTesteIA(26, "Quanto eu já gastei com Uber este mês?", "consultar", null, "uber"),
                 new CasoTesteIA(27, "Quanto gastamos com Alimentação este mês?", "consultar", null, "alimenta"),
                 new CasoTesteIA(28, "Quanto gastei na padaria este mês?", "consultar", null, "padaria"),
@@ -612,7 +551,6 @@ public class AssistenteIAService {
             try {
                 interpretado = interpretar(grupoId, caso.comando());
             } catch (IllegalArgumentException e) {
-                // Comando nao compreendido conta como erro de interpretacao
                 interpretado = new Comando();
                 interpretado.setIntencao("nao_entendido");
                 interpretado.setProvedorIA(clienteLLM.resolverProvedor());
@@ -628,7 +566,7 @@ public class AssistenteIAService {
                 valorOk = interpretado.getValor() != null
                         && interpretado.getValor().compareTo(caso.valorEsperado()) == 0;
             }
-            boolean tempoOk = tMs < 3000; // Meta Secao 11.4: < 3 segundos
+            boolean tempoOk = tMs < 3000;
             boolean passou = intencaoOk && valorOk && tempoOk;
             if (passou) {
                 acertos++;
@@ -669,12 +607,7 @@ public class AssistenteIAService {
         return relatorio;
     }
 
-    // =========================================================================
-    // AUXILIARES DE EXTRACAO NLP
-    // =========================================================================
-
     private BigDecimal extrairValorMonetario(String texto) {
-        // Procura padroes como "R$ 1.250,90", "R$ 45,90", "45,90", "1500.00", "8500"
         Pattern pMoeda = Pattern.compile("(?:R\\$\\s*)?(\\d{1,3}(?:\\.\\d{3})+,\\d{2}|\\d+[.,]\\d{2}|\\d{1,3}(?:\\.\\d{3})+)(?!\\s*x|\\s*vezes)", Pattern.CASE_INSENSITIVE);
         Matcher m = pMoeda.matcher(texto);
         if (m.find()) {
@@ -829,7 +762,6 @@ public class AssistenteIAService {
             }
         }
 
-        // Limpeza generica se nao bater em palavra-chave conhecida
         String limpo = textoOriginal
                 .replaceAll("(?i)registrar\\s+(gasto|despesa|receita|pagamento|compra)\\s+(de\\s+)?", "")
                 .replaceAll("(?i)(gastei|paguei|comprei|recebi|lancar)\\s+", "")

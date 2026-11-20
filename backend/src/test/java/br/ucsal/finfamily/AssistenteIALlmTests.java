@@ -1,3 +1,4 @@
+// testes do assistente com IA
 package br.ucsal.finfamily;
 
 import br.ucsal.finfamily.domain.model.Comando;
@@ -17,13 +18,8 @@ import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.when;
 
-/**
- * Valida a integracao do Assistente com o LLM (RF-012, Secao 11.2 e 11.3) usando um
- * ClienteLLM simulado, sem depender de rede nem de chave de API.
- */
 @SpringBootTest
 class AssistenteIALlmTests {
-
     @Autowired
     private AssistenteIAService assistenteIAService;
 

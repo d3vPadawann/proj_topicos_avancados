@@ -1,3 +1,4 @@
+// controle de acesso por grupo familiar
 package br.ucsal.finfamily.security;
 
 import br.ucsal.finfamily.domain.enums.PapelFamiliar;
@@ -14,18 +15,9 @@ import java.util.Collection;
 import java.util.Map;
 import java.util.Objects;
 
-/**
- * Controle de acesso por grupo familiar e por usuario (RF-001, OE4, Secao 2.9).
- *
- * O SecurityConfig decide QUAIS perfis podem chamar cada rota. Esta classe complementa
- * verificando SE o registro pedido (conta, transacao, membro...) pertence ao grupo do
- * usuario logado, que vem sempre do token JWT e nunca de parametros enviados pelo navegador.
- */
 @Component
 @Transactional(readOnly = true)
 public class ControleAcesso {
-
-    /** Dados do usuario autenticado, extraidos do token JWT. */
     public record UsuarioLogado(Long usuarioId, Long grupoId, String email, String papel) {
         public boolean isTitular() {
             return PapelFamiliar.TITULAR.name().equals(papel);
@@ -56,7 +48,6 @@ public class ControleAcesso {
         this.notificacaoRepository = notificacaoRepository;
     }
 
-    /** Usuario logado; lanca excecao se a requisicao nao tiver token valido. */
     public UsuarioLogado atual() {
         Authentication auth = SecurityContextHolder.getContext().getAuthentication();
         if (auth == null || !(auth.getPrincipal() instanceof Map<?, ?> p)) {
@@ -78,10 +69,6 @@ public class ControleAcesso {
         return atual().usuarioId();
     }
 
-    // ------------------------------------------------------------------
-    // Verificacoes de posse por grupo familiar
-    // ------------------------------------------------------------------
-
     public void exigirConta(Long contaId) {
         if (contaId == null) return;
         Conta conta = contaRepository.findById(contaId)
@@ -89,7 +76,6 @@ public class ControleAcesso {
         exigirMesmoGrupo(conta.getGrupo());
     }
 
-    /** Categorias sem grupo sao globais (padrao do sistema) e podem ser usadas por todos. */
     public void exigirCategoriaUtilizavel(Long categoriaId) {
         if (categoriaId == null) return;
         Categoria c = categoriaRepository.findById(categoriaId)
@@ -117,7 +103,6 @@ public class ControleAcesso {
         if (tagIds != null) tagIds.forEach(this::exigirTag);
     }
 
-    /** O Titular exclui qualquer transacao do grupo; o Membro so as que ele mesmo lancou. */
     public void exigirTransacaoExcluivel(Long transacaoId) {
         Transacao t = transacaoRepository.findById(transacaoId)
                 .orElseThrow(() -> new IllegalArgumentException("Transação não encontrada."));
@@ -141,7 +126,6 @@ public class ControleAcesso {
         return m;
     }
 
-    /** Usuario indicado como proprietario de uma conta precisa participar do grupo. */
     public void exigirUsuarioDoGrupo(Long usuarioId) {
         if (usuarioId == null) return;
         Long grupo = grupoId();
@@ -152,7 +136,6 @@ public class ControleAcesso {
         }
     }
 
-    /** So o proprio convidado responde ao convite. */
     public void exigirConviteDoUsuario(Long membroId) {
         Membro m = membroRepository.findById(membroId)
                 .orElseThrow(() -> new IllegalArgumentException("Convite não encontrado."));
@@ -174,14 +157,12 @@ public class ControleAcesso {
         }
     }
 
-    /** RNF-004 (LGPD): portabilidade e exclusao valem apenas para os dados do proprio usuario. */
     public void exigirProprioUsuario(Long usuarioId) {
         if (!Objects.equals(usuarioId, usuarioId())) {
             throw new AccessDeniedException("Pela LGPD, você só pode exportar ou excluir os seus próprios dados.");
         }
     }
 
-    /** Papeis que o Titular pode atribuir a membros do grupo (nunca TITULAR ou SYSADMIN). */
     public PapelFamiliar exigirPapelAtribuivel(PapelFamiliar papel) {
         if (papel == null) return null;
         if (papel != PapelFamiliar.MEMBRO && papel != PapelFamiliar.AUDITOR) {

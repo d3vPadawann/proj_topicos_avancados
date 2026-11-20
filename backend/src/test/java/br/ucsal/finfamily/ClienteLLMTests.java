@@ -1,3 +1,4 @@
+// testes do cliente da IA
 package br.ucsal.finfamily;
 
 import br.ucsal.finfamily.service.ClienteLLM;
@@ -17,11 +18,7 @@ import java.util.concurrent.atomic.AtomicReference;
 
 import static org.junit.jupiter.api.Assertions.*;
 
-/**
- * Valida as chamadas HTTP do ClienteLLM ao Gemini e ao Ollama contra um servidor local simulado.
- */
 class ClienteLLMTests {
-
     private HttpServer servidor;
     private String baseUrl;
     private final AtomicReference<String> corpoRecebido = new AtomicReference<>();

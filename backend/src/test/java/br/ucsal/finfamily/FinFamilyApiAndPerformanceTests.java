@@ -1,3 +1,4 @@
+// testes de API e desempenho
 package br.ucsal.finfamily;
 
 import org.junit.jupiter.api.DisplayName;
@@ -19,14 +20,10 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-/**
- * Testes de Integracao de API REST e Desempenho / Latencia (RNF-001: < 500ms no P95).
- */
 @SpringBootTest
 @AutoConfigureMockMvc
 @Transactional
 class FinFamilyApiAndPerformanceTests {
-
     @Autowired
     private MockMvc mockMvc;
 

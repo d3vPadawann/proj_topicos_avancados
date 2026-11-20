@@ -1,3 +1,4 @@
+// filtro que valida o token JWT
 package br.ucsal.finfamily.security;
 
 import io.jsonwebtoken.Claims;
@@ -17,7 +18,6 @@ import java.util.Map;
 
 @Component
 public class JwtAuthenticationFilter extends OncePerRequestFilter {
-
     private final JwtTokenProvider jwtTokenProvider;
 
     public JwtAuthenticationFilter(JwtTokenProvider jwtTokenProvider) {
@@ -51,7 +51,6 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                         "papel", papelEfetivo
                 );
 
-                // Convidado que ainda nao aceitou o convite nao recebe as permissoes do papel (RF-007)
                 String autoridade = "CONVIDADO".equals(status) ? "ROLE_CONVIDADO" : "ROLE_" + papelEfetivo;
 
                 UsernamePasswordAuthenticationToken auth = new UsernamePasswordAuthenticationToken(

@@ -1,3 +1,4 @@
+// autenticacao, cadastro e LGPD
 package br.ucsal.finfamily.service;
 
 import br.ucsal.finfamily.domain.enums.PapelFamiliar;
@@ -14,12 +15,8 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
-/**
- * Servico de Autenticacao, Gestao de Sessao (RF-001) e Conformidade com a LGPD (RNF-004).
- */
 @Service
 public class AuthService {
-
     private final UsuarioRepository usuarioRepository;
     private final GrupoFamiliarRepository grupoFamiliarRepository;
     private final MembroRepository membroRepository;
@@ -59,7 +56,6 @@ public class AuthService {
             throw new IllegalArgumentException("E-mail ou senha inválidos.");
         }
 
-        // Verifica vinculo em grupo familiar
         List<Membro> membros = membroRepository.findByUsuarioId(usuario.getId());
         if (membros.isEmpty()) {
             membros = membroRepository.findByEmailConvidadoIgnoreCase(usuario.getEmail());
@@ -82,7 +78,6 @@ public class AuthService {
             papelNoGrupo = m.getPapel();
             statusNoGrupo = m.getStatus();
         } else if (papelNoGrupo == PapelFamiliar.SYSADMIN) {
-            // O Sysadmin nao pertence a nenhum grupo familiar e nao acessa dados financeiros (Secao 2.9)
             grupoId = 0L;
             nomeGrupo = "Administração do Sistema";
         } else {
@@ -108,7 +103,7 @@ public class AuthService {
         resposta.put("email", usuario.getEmail());
         resposta.put("papel", papelNoGrupo.name());
         resposta.put("statusMembro", statusNoGrupo.name());
-        // Usado pelo convidado para aceitar ou recusar o proprio convite (RF-007, BPMN Figura 2)
+
         resposta.put("membroId", membros.isEmpty() ? null : membros.get(0).getId());
         resposta.put("grupoId", grupoId);
         resposta.put("nomeGrupo", nomeGrupo);
@@ -130,7 +125,6 @@ public class AuthService {
         novo.setDocumentoSensivel(cpfOpcional != null && !cpfOpcional.isBlank() ? cpfOpcional : "000.000.000-00");
         novo = usuarioRepository.save(novo);
 
-        // Verifica se existe convite pendente para este e-mail
         List<Membro> convites = membroRepository.findByEmailConvidadoIgnoreCase(novo.getEmail());
         GrupoFamiliar grupo;
         PapelFamiliar papel = PapelFamiliar.TITULAR;
@@ -145,8 +139,6 @@ public class AuthService {
             novo.setPapelPrincipal(papel);
             usuarioRepository.save(novo);
         } else {
-            // Sem convite, o novo usuario sempre cria o proprio grupo e e o titular dele;
-            // nunca entra automaticamente em um grupo de outra familia.
             String nomeDoGrupo = (nomeGrupo == null || nomeGrupo.isBlank())
                     ? "Família " + nome.trim().split(" ")[0]
                     : nomeGrupo;
@@ -167,9 +159,6 @@ public class AuthService {
         return login(email, senha);
     }
 
-    /**
-     * RNF-004 (Conformidade com a LGPD): Portabilidade de dados (download de todos os dados do usuario).
-     */
     @Transactional(readOnly = true)
     public Map<String, Object> exportarDadosLGPD(Long usuarioId) {
         Usuario u = usuarioRepository.findById(usuarioId)
@@ -214,9 +203,6 @@ public class AuthService {
         return pacoteLgpd;
     }
 
-    /**
-     * RNF-004 (Conformidade com a LGPD): Direito ao Esquecimento (exclusao irreversivel da conta).
-     */
     @Transactional
     public Map<String, Object> excluirContaIrreversivelLGPD(Long usuarioId) {
         Usuario u = usuarioRepository.findById(usuarioId)
@@ -224,7 +210,6 @@ public class AuthService {
 
         String emailMascarado = u.getEmail();
 
-        // Desvincula transacoes de autoria e anonimiza/remove registros pessoais
         List<Transacao> transacoes = transacaoRepository.findByAutorId(usuarioId);
         for (Transacao t : transacoes) {
             t.setAutor(null);

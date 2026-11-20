@@ -1,3 +1,4 @@
+// login usado nos testes
 package br.ucsal.finfamily;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -7,9 +8,7 @@ import org.springframework.test.web.servlet.MockMvc;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-/** Faz login pela API com os usuarios de demonstracao e devolve o cabecalho Authorization. */
 final class LoginDeTeste {
-
     static final String TITULAR = "eduardorocha.santos@ucsal.edu.br";
     static final String MEMBRO = "danielteixeira.melo@ucsal.edu.br";
     static final String AUDITOR = "elton.figueiredo@pro.ucsal.edu.br";

@@ -1,3 +1,4 @@
+@rem inicia o sistema
 @echo off
 setlocal
 chcp 65001 > nul
@@ -8,9 +9,6 @@ echo   Disciplina: Topicos Avancados de Programacao - Prof. Msc. Elton Figueired
 echo ============================================================================
 echo.
 
-rem ---------------------------------------------------------------------------
-rem 1. Localiza o Java 21+ (usa JAVA_HOME se estiver definido; senao, o java do PATH)
-rem ---------------------------------------------------------------------------
 set "JAVA_EXE="
 if defined JAVA_HOME (
     if exist "%JAVA_HOME%\bin\java.exe" (
@@ -38,9 +36,6 @@ if errorlevel 1 (
 )
 echo [OK] Java 21+ encontrado: %JAVA_EXE%
 
-rem ---------------------------------------------------------------------------
-rem 2. Verifica se a porta 8085 ja esta em uso (outro FinFamily aberto?)
-rem ---------------------------------------------------------------------------
 netstat -ano | findstr /r /c:":8085 .*LISTENING" > nul
 if not errorlevel 1 (
     echo [AVISO] A porta 8085 ja esta em uso. Provavelmente o FinFamily ja esta aberto.
@@ -55,18 +50,11 @@ if exist "%~dp0backend\config\ia.properties" (
     echo        Para usar o Gemini, copie ia.properties.exemplo e coloque a sua chave.
 )
 
-rem ---------------------------------------------------------------------------
-rem 3. Inicia o servidor Spring Boot pelo Maven Wrapper (nao precisa ter Maven instalado)
-rem    O servidor ja entrega o front-end React compilado na mesma porta.
-rem ---------------------------------------------------------------------------
 echo.
 echo Iniciando o servidor na porta 8085 em uma nova janela...
 echo (Na primeira vez o Maven e as dependencias sao baixados; pode levar alguns minutos.)
 start "FinFamily - Servidor (porta 8085)" /D "%~dp0backend" cmd /k .\mvnw.cmd spring-boot:run
 
-rem ---------------------------------------------------------------------------
-rem 4. Aguarda o servidor responder e abre o navegador
-rem ---------------------------------------------------------------------------
 set /a TENTATIVAS=0
 :aguardar
 set /a TENTATIVAS+=1
