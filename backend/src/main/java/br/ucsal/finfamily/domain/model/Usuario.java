@@ -29,7 +29,9 @@ public class Usuario {
 
     /**
      * Dado sensivel criptografado com AES-256-GCM em repouso (RNF-003).
+     * Nunca e serializado nas respostas da API; so aparece na portabilidade da LGPD do proprio usuario.
      */
+    @JsonIgnore
     @Convert(converter = AesAttributeConverter.class)
     private String documentoSensivel;
 

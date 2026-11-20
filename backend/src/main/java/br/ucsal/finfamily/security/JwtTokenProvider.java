@@ -29,6 +29,14 @@ public class JwtTokenProvider {
     }
 
     public String gerarToken(Long usuarioId, String email, String nome, PapelFamiliar papel, Long grupoId) {
+        return gerarToken(usuarioId, email, nome, papel, grupoId, "ATIVO");
+    }
+
+    /**
+     * @param statusMembro status do usuario no grupo (ATIVO ou CONVIDADO); um convidado
+     *                     so pode responder ao proprio convite ate aceita-lo.
+     */
+    public String gerarToken(Long usuarioId, String email, String nome, PapelFamiliar papel, Long grupoId, String statusMembro) {
         Date agora = new Date();
         Date expiracao = new Date(agora.getTime() + jwtExpirationMs);
 
@@ -38,6 +46,7 @@ public class JwtTokenProvider {
                 .claim("nome", nome)
                 .claim("papel", papel != null ? papel.name() : PapelFamiliar.MEMBRO.name())
                 .claim("grupoId", grupoId != null ? grupoId : 1L)
+                .claim("status", statusMembro != null ? statusMembro : "ATIVO")
                 .claim("tokenCriptografado", AesAttributeConverter.encrypt(email + ":" + usuarioId))
                 .issuedAt(agora)
                 .expiration(expiracao)

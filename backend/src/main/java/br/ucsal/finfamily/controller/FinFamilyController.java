@@ -2,6 +2,7 @@ package br.ucsal.finfamily.controller;
 
 import br.ucsal.finfamily.domain.enums.*;
 import br.ucsal.finfamily.domain.model.*;
+import br.ucsal.finfamily.security.ControleAcesso;
 import br.ucsal.finfamily.service.AssistenteIAService;
 import br.ucsal.finfamily.service.AuditLogService;
 import br.ucsal.finfamily.service.ExportacaoBackupService;
@@ -9,6 +10,7 @@ import br.ucsal.finfamily.service.FinanceiroService;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -31,15 +33,18 @@ public class FinFamilyController {
     private final AssistenteIAService assistenteIAService;
     private final ExportacaoBackupService exportacaoBackupService;
     private final AuditLogService auditLogService;
+    private final ControleAcesso controleAcesso;
 
     public FinFamilyController(FinanceiroService financeiroService,
                                AssistenteIAService assistenteIAService,
                                ExportacaoBackupService exportacaoBackupService,
-                               AuditLogService auditLogService) {
+                               AuditLogService auditLogService,
+                               ControleAcesso controleAcesso) {
         this.financeiroService = financeiroService;
         this.assistenteIAService = assistenteIAService;
         this.exportacaoBackupService = exportacaoBackupService;
         this.auditLogService = auditLogService;
+        this.controleAcesso = controleAcesso;
     }
 
     @GetMapping("/health")
@@ -56,9 +61,8 @@ public class FinFamilyController {
     // =========================================================================
 
     @GetMapping("/dashboard")
-    public ResponseEntity<Map<String, Object>> obterDashboard(
-            @RequestParam(required = false, defaultValue = "1") Long grupoId,
-            @RequestParam(required = false) String mes) {
+    public ResponseEntity<Map<String, Object>> obterDashboard(@RequestParam(required = false) String mes) {
+        Long grupoId = controleAcesso.grupoId();
         return ResponseEntity.ok(financeiroService.obterDashboardConsolidado(grupoId, mes));
     }
 
@@ -67,14 +71,16 @@ public class FinFamilyController {
     // =========================================================================
 
     @GetMapping("/contas")
-    public ResponseEntity<List<Conta>> listarContas(@RequestParam(required = false, defaultValue = "1") Long grupoId) {
+    public ResponseEntity<List<Conta>> listarContas() {
+        Long grupoId = controleAcesso.grupoId();
         return ResponseEntity.ok(financeiroService.listarContas(grupoId));
     }
 
     @PostMapping("/contas")
     public ResponseEntity<Conta> criarConta(@RequestBody Map<String, Object> body) {
-        Long grupoId = body.get("grupoId") != null ? Long.valueOf(String.valueOf(body.get("grupoId"))) : 1L;
+        Long grupoId = controleAcesso.grupoId();
         Long proprietarioId = body.get("proprietarioId") != null ? Long.valueOf(String.valueOf(body.get("proprietarioId"))) : null;
+        controleAcesso.exigirUsuarioDoGrupo(proprietarioId);
 
         Conta c = new Conta();
         c.setNome(String.valueOf(body.get("nome")));
@@ -95,9 +101,11 @@ public class FinFamilyController {
 
     @PutMapping("/contas/{id}")
     public ResponseEntity<Conta> atualizarConta(@PathVariable Long id, @RequestBody Map<String, Object> body) {
-        Long grupoId = body.get("grupoId") != null ? Long.valueOf(String.valueOf(body.get("grupoId"))) : 1L;
+        Long grupoId = controleAcesso.grupoId();
         Long proprietarioId = body.get("proprietarioId") != null ? Long.valueOf(String.valueOf(body.get("proprietarioId"))) : null;
+        controleAcesso.exigirUsuarioDoGrupo(proprietarioId);
 
+        controleAcesso.exigirConta(id);
         Conta c = new Conta();
         c.setId(id);
         c.setNome(String.valueOf(body.get("nome")));
@@ -114,6 +122,7 @@ public class FinFamilyController {
 
     @DeleteMapping("/contas/{id}")
     public ResponseEntity<Map<String, String>> excluirConta(@PathVariable Long id) {
+        controleAcesso.exigirConta(id);
         financeiroService.excluirConta(id);
         return ResponseEntity.ok(Map.of("mensagem", "Conta excluída com sucesso (RN-002 verificada: saldo zero)."));
     }
@@ -123,18 +132,20 @@ public class FinFamilyController {
     // =========================================================================
 
     @GetMapping("/categorias")
-    public ResponseEntity<List<Map<String, Object>>> listarCategoriasArvore(@RequestParam(required = false, defaultValue = "1") Long grupoId) {
+    public ResponseEntity<List<Map<String, Object>>> listarCategoriasArvore() {
+        Long grupoId = controleAcesso.grupoId();
         return ResponseEntity.ok(financeiroService.listarCategoriasEmArvore(grupoId));
     }
 
     @GetMapping("/categorias/planas")
-    public ResponseEntity<List<Categoria>> listarCategoriasPlanas(@RequestParam(required = false, defaultValue = "1") Long grupoId) {
+    public ResponseEntity<List<Categoria>> listarCategoriasPlanas() {
+        Long grupoId = controleAcesso.grupoId();
         return ResponseEntity.ok(financeiroService.listarTodasCategoriasPlanas(grupoId));
     }
 
     @PostMapping("/categorias")
     public ResponseEntity<Categoria> criarCategoria(@RequestBody Map<String, Object> body) {
-        Long grupoId = body.get("grupoId") != null ? Long.valueOf(String.valueOf(body.get("grupoId"))) : 1L;
+        Long grupoId = controleAcesso.grupoId();
         String nome = String.valueOf(body.get("nome"));
         String cor = body.get("cor") != null ? String.valueOf(body.get("cor")) : "#3B82F6";
         String icone = body.get("icone") != null ? String.valueOf(body.get("icone")) : "tag";
@@ -144,23 +155,26 @@ public class FinFamilyController {
         Long paiId = (body.get("paiId") != null && !String.valueOf(body.get("paiId")).isBlank())
                 ? Long.valueOf(String.valueOf(body.get("paiId")))
                 : null;
+        controleAcesso.exigirCategoriaUtilizavel(paiId);
         return ResponseEntity.ok(financeiroService.criarCategoria(grupoId, nome, cor, icone, tipoPadrao, paiId));
     }
 
     @DeleteMapping("/categorias/{id}")
     public ResponseEntity<Map<String, String>> excluirCategoria(@PathVariable Long id) {
+        controleAcesso.exigirCategoriaDoGrupo(id);
         financeiroService.excluirCategoria(id);
         return ResponseEntity.ok(Map.of("mensagem", "Categoria excluída com sucesso."));
     }
 
     @GetMapping("/tags")
-    public ResponseEntity<List<Tag>> listarTags(@RequestParam(required = false, defaultValue = "1") Long grupoId) {
+    public ResponseEntity<List<Tag>> listarTags() {
+        Long grupoId = controleAcesso.grupoId();
         return ResponseEntity.ok(financeiroService.listarTags(grupoId));
     }
 
     @PostMapping("/tags")
     public ResponseEntity<Tag> criarTag(@RequestBody Map<String, Object> body) {
-        Long grupoId = body.get("grupoId") != null ? Long.valueOf(String.valueOf(body.get("grupoId"))) : 1L;
+        Long grupoId = controleAcesso.grupoId();
         String nome = String.valueOf(body.get("nome"));
         String cor = body.get("cor") != null ? String.valueOf(body.get("cor")) : "#6366F1";
         return ResponseEntity.ok(financeiroService.criarTag(grupoId, nome, cor));
@@ -168,6 +182,7 @@ public class FinFamilyController {
 
     @DeleteMapping("/tags/{id}")
     public ResponseEntity<Map<String, String>> excluirTag(@PathVariable Long id) {
+        controleAcesso.exigirTag(id);
         financeiroService.excluirTag(id);
         return ResponseEntity.ok(Map.of("mensagem", "Tag excluída com sucesso."));
     }
@@ -177,19 +192,19 @@ public class FinFamilyController {
     // =========================================================================
 
     @GetMapping("/transacoes")
-    public ResponseEntity<List<Transacao>> listarTransacoes(
-            @RequestParam(required = false, defaultValue = "1") Long grupoId,
-            @RequestParam(required = false) Long contaId,
+    public ResponseEntity<List<Transacao>> listarTransacoes(@RequestParam(required = false) Long contaId,
             @RequestParam(required = false) Long categoriaId,
             @RequestParam(required = false) String tipo,
             @RequestParam(required = false) String busca,
             @RequestParam(required = false) String periodo) {
+        Long grupoId = controleAcesso.grupoId();
+        controleAcesso.exigirConta(contaId);
         return ResponseEntity.ok(financeiroService.listarTransacoes(grupoId, contaId, categoriaId, tipo, busca, periodo));
     }
 
     @PostMapping("/transacoes")
     public ResponseEntity<List<Transacao>> registrarTransacao(@RequestBody Map<String, Object> body) {
-        Long grupoId = body.get("grupoId") != null ? Long.valueOf(String.valueOf(body.get("grupoId"))) : 1L;
+        Long grupoId = controleAcesso.grupoId();
         String descricao = String.valueOf(body.get("descricao"));
         BigDecimal valor = new BigDecimal(String.valueOf(body.get("valor")));
         LocalDate data = (body.get("data") != null && !String.valueOf(body.get("data")).isBlank())
@@ -218,7 +233,12 @@ public class FinFamilyController {
                 : 1;
         Boolean recorrente = body.get("recorrente") != null && Boolean.parseBoolean(String.valueOf(body.get("recorrente")));
         String frequencia = body.get("frequenciaRecorrencia") != null ? String.valueOf(body.get("frequenciaRecorrencia")) : "MENSAL";
-        Long autorId = body.get("autorId") != null ? Long.valueOf(String.valueOf(body.get("autorId"))) : null;
+        Long autorId = controleAcesso.usuarioId();
+
+        controleAcesso.exigirConta(contaId);
+        controleAcesso.exigirConta(contaDestinoId);
+        controleAcesso.exigirCategoriaUtilizavel(categoriaId);
+        controleAcesso.exigirTags(tagIds);
 
         return ResponseEntity.ok(financeiroService.registrarTransacao(
                 grupoId, descricao, valor, data, tipo, contaId, contaDestinoId, categoriaId,
@@ -228,6 +248,7 @@ public class FinFamilyController {
 
     @DeleteMapping("/transacoes/{id}")
     public ResponseEntity<Map<String, String>> excluirTransacao(@PathVariable Long id) {
+        controleAcesso.exigirTransacaoExcluivel(id);
         financeiroService.excluirTransacao(id);
         return ResponseEntity.ok(Map.of("mensagem", "Transação excluída com sucesso."));
     }
@@ -238,37 +259,41 @@ public class FinFamilyController {
 
     @PostMapping("/importacao/analisar")
     public ResponseEntity<Map<String, Object>> analisarCsvTexto(@RequestBody Map<String, Object> body) {
-        Long grupoId = body.get("grupoId") != null ? Long.valueOf(String.valueOf(body.get("grupoId"))) : 1L;
+        Long grupoId = controleAcesso.grupoId();
         Long contaId = Long.valueOf(String.valueOf(body.get("contaId")));
         String conteudoCsv = String.valueOf(body.get("conteudoCsv"));
+        controleAcesso.exigirConta(contaId);
         return ResponseEntity.ok(financeiroService.analisarArquivoCSV(grupoId, contaId, conteudoCsv));
     }
 
     @PostMapping("/importacao/upload-analisar")
     public ResponseEntity<Map<String, Object>> uploadAnalisarCsv(
             @RequestParam("arquivo") MultipartFile arquivo,
-            @RequestParam("contaId") Long contaId,
-            @RequestParam(value = "grupoId", defaultValue = "1") Long grupoId) throws Exception {
+            @RequestParam("contaId") Long contaId) throws Exception {
+        Long grupoId = controleAcesso.grupoId();
         String conteudo = new String(arquivo.getBytes(), StandardCharsets.UTF_8);
+        controleAcesso.exigirConta(contaId);
         return ResponseEntity.ok(financeiroService.analisarArquivoCSV(grupoId, contaId, conteudo));
     }
 
     @PostMapping("/importacao/confirmar")
     @SuppressWarnings("unchecked")
     public ResponseEntity<Map<String, Object>> confirmarImportacaoCsv(@RequestBody Map<String, Object> body) {
-        Long grupoId = body.get("grupoId") != null ? Long.valueOf(String.valueOf(body.get("grupoId"))) : 1L;
+        Long grupoId = controleAcesso.grupoId();
         Long contaId = Long.valueOf(String.valueOf(body.get("contaId")));
-        Long autorId = body.get("autorId") != null ? Long.valueOf(String.valueOf(body.get("autorId"))) : null;
+        Long autorId = controleAcesso.usuarioId();
         List<Map<String, Object>> transacoesConfirmadas = (List<Map<String, Object>>) body.get("transacoes");
+        controleAcesso.exigirConta(contaId);
         return ResponseEntity.ok(financeiroService.confirmarImportacaoCSV(grupoId, contaId, transacoesConfirmadas, autorId));
     }
 
     @PostMapping("/importacao/direto")
     public ResponseEntity<Map<String, Object>> importarCsvDireto(@RequestBody Map<String, Object> body) {
-        Long grupoId = body.get("grupoId") != null ? Long.valueOf(String.valueOf(body.get("grupoId"))) : 1L;
+        Long grupoId = controleAcesso.grupoId();
         Long contaId = Long.valueOf(String.valueOf(body.get("contaId")));
         String conteudoCsv = String.valueOf(body.get("conteudoCsv"));
-        Long autorId = body.get("autorId") != null ? Long.valueOf(String.valueOf(body.get("autorId"))) : null;
+        Long autorId = controleAcesso.usuarioId();
+        controleAcesso.exigirConta(contaId);
         return ResponseEntity.ok(financeiroService.importarArquivoCSVDireto(grupoId, contaId, conteudoCsv, autorId));
     }
 
@@ -277,23 +302,24 @@ public class FinFamilyController {
     // =========================================================================
 
     @GetMapping("/orcamentos")
-    public ResponseEntity<List<Orcamento>> listarOrcamentos(
-            @RequestParam(required = false, defaultValue = "1") Long grupoId,
-            @RequestParam(required = false) String mes) {
+    public ResponseEntity<List<Orcamento>> listarOrcamentos(@RequestParam(required = false) String mes) {
+        Long grupoId = controleAcesso.grupoId();
         return ResponseEntity.ok(financeiroService.listarOrcamentos(grupoId, mes));
     }
 
     @PostMapping("/orcamentos")
     public ResponseEntity<Orcamento> definirOrcamento(@RequestBody Map<String, Object> body) {
-        Long grupoId = body.get("grupoId") != null ? Long.valueOf(String.valueOf(body.get("grupoId"))) : 1L;
+        Long grupoId = controleAcesso.grupoId();
         Long categoriaId = Long.valueOf(String.valueOf(body.get("categoriaId")));
         String mes = body.get("mes") != null ? String.valueOf(body.get("mes")) : null;
         BigDecimal valorPlanejado = new BigDecimal(String.valueOf(body.get("valorPlanejado")));
+        controleAcesso.exigirCategoriaUtilizavel(categoriaId);
         return ResponseEntity.ok(financeiroService.definirOrcamento(grupoId, categoriaId, mes, valorPlanejado));
     }
 
     @DeleteMapping("/orcamentos/{id}")
     public ResponseEntity<Map<String, String>> excluirOrcamento(@PathVariable Long id) {
+        controleAcesso.exigirOrcamento(id);
         financeiroService.excluirOrcamento(id);
         return ResponseEntity.ok(Map.of("mensagem", "Orçamento excluído com sucesso."));
     }
@@ -303,23 +329,26 @@ public class FinFamilyController {
     // =========================================================================
 
     @GetMapping("/grupo/membros")
-    public ResponseEntity<List<Membro>> listarMembros(@RequestParam(required = false, defaultValue = "1") Long grupoId) {
+    public ResponseEntity<List<Membro>> listarMembros() {
+        Long grupoId = controleAcesso.grupoId();
         return ResponseEntity.ok(financeiroService.listarMembros(grupoId));
     }
 
     @PostMapping("/grupo/convidar")
     public ResponseEntity<Membro> convidarMembro(@RequestBody Map<String, Object> body) {
-        Long grupoId = body.get("grupoId") != null ? Long.valueOf(String.valueOf(body.get("grupoId"))) : 1L;
+        Long grupoId = controleAcesso.grupoId();
         String nome = String.valueOf(body.get("nome"));
         String email = String.valueOf(body.get("email"));
         PapelFamiliar papel = body.get("papel") != null
                 ? PapelFamiliar.valueOf(String.valueOf(body.get("papel")).toUpperCase())
                 : PapelFamiliar.MEMBRO;
+        controleAcesso.exigirPapelAtribuivel(papel);
         return ResponseEntity.ok(financeiroService.convidarMembro(grupoId, nome, email, papel));
     }
 
     @PostMapping("/grupo/membros/{id}/resposta")
     public ResponseEntity<Membro> responderConvite(@PathVariable Long id, @RequestBody Map<String, Object> body) {
+        controleAcesso.exigirConviteDoUsuario(id);
         boolean aceitar = body.get("aceitar") == null || Boolean.parseBoolean(String.valueOf(body.get("aceitar")));
         return ResponseEntity.ok(financeiroService.responderConvite(id, aceitar));
     }
@@ -328,6 +357,11 @@ public class FinFamilyController {
     public ResponseEntity<Membro> alterarStatusMembro(@PathVariable Long id, @RequestBody Map<String, Object> body) {
         StatusMembro status = body.get("status") != null ? StatusMembro.valueOf(String.valueOf(body.get("status"))) : null;
         PapelFamiliar papel = body.get("papel") != null ? PapelFamiliar.valueOf(String.valueOf(body.get("papel"))) : null;
+        Membro alvo = controleAcesso.exigirMembroDoGrupo(id);
+        if (papel != null && alvo.getPapel() == PapelFamiliar.TITULAR) {
+            throw new AccessDeniedException("O papel do Titular não pode ser alterado.");
+        }
+        controleAcesso.exigirPapelAtribuivel(papel);
         return ResponseEntity.ok(financeiroService.alterarStatusMembro(id, status, papel));
     }
 
@@ -336,7 +370,8 @@ public class FinFamilyController {
     // =========================================================================
 
     @GetMapping("/investimentos/carteira")
-    public ResponseEntity<Map<String, Object>> consultarCarteira(@RequestParam(required = false, defaultValue = "1") Long grupoId) {
+    public ResponseEntity<Map<String, Object>> consultarCarteira() {
+        Long grupoId = controleAcesso.grupoId();
         return ResponseEntity.ok(financeiroService.consultarCarteiraInvestimentos(grupoId));
     }
 
@@ -357,7 +392,7 @@ public class FinFamilyController {
 
     @PostMapping("/investimentos/operacoes")
     public ResponseEntity<OperacaoInvestimento> registrarOperacaoInvestimento(@RequestBody Map<String, Object> body) {
-        Long grupoId = body.get("grupoId") != null ? Long.valueOf(String.valueOf(body.get("grupoId"))) : 1L;
+        Long grupoId = controleAcesso.grupoId();
         String ticker = String.valueOf(body.get("ticker"));
         TipoOperacao tipo = TipoOperacao.valueOf(String.valueOf(body.get("tipo")).toUpperCase());
         BigDecimal quantidade = new BigDecimal(String.valueOf(body.get("quantidade")));
@@ -373,6 +408,8 @@ public class FinFamilyController {
                 : null;
         String nomeAtivo = body.get("nomeAtivo") != null ? String.valueOf(body.get("nomeAtivo")) : null;
 
+        controleAcesso.exigirConta(contaCorretoraId);
+        controleAcesso.exigirConta(contaDestinoId);
         return ResponseEntity.ok(financeiroService.registrarOperacaoInvestimento(
                 grupoId, ticker, tipo, quantidade, preco, data, contaCorretoraId, contaDestinoId, nomeAtivo
         ));
@@ -383,17 +420,20 @@ public class FinFamilyController {
     // =========================================================================
 
     @GetMapping("/notificacoes")
-    public ResponseEntity<List<Notificacao>> listarNotificacoes(@RequestParam(required = false, defaultValue = "1") Long grupoId) {
+    public ResponseEntity<List<Notificacao>> listarNotificacoes() {
+        Long grupoId = controleAcesso.grupoId();
         return ResponseEntity.ok(financeiroService.listarNotificacoes(grupoId));
     }
 
     @PatchMapping("/notificacoes/{id}/lida")
     public ResponseEntity<Notificacao> marcarComoLida(@PathVariable Long id) {
+        controleAcesso.exigirNotificacao(id);
         return ResponseEntity.ok(financeiroService.marcarNotificacaoComoLida(id));
     }
 
     @PostMapping("/notificacoes/ler-todas")
-    public ResponseEntity<Map<String, String>> marcarTodasComoLidas(@RequestParam(required = false, defaultValue = "1") Long grupoId) {
+    public ResponseEntity<Map<String, String>> marcarTodasComoLidas() {
+        Long grupoId = controleAcesso.grupoId();
         financeiroService.marcarTodasNotificacoesComoLidas(grupoId);
         return ResponseEntity.ok(Map.of("mensagem", "Todas as notificações foram marcadas como lidas."));
     }
@@ -409,16 +449,16 @@ public class FinFamilyController {
 
     @PostMapping("/assistente/interpretar")
     public ResponseEntity<Comando> interpretarComandoIA(@RequestBody Map<String, Object> body) {
-        Long grupoId = body.get("grupoId") != null ? Long.valueOf(String.valueOf(body.get("grupoId"))) : 1L;
+        Long grupoId = controleAcesso.grupoId();
         String texto = String.valueOf(body.get("texto"));
         return ResponseEntity.ok(assistenteIAService.interpretar(grupoId, texto));
     }
 
     @PostMapping("/assistente/executar")
     public ResponseEntity<Map<String, Object>> executarComandoIA(@RequestBody Map<String, Object> body) {
-        Long grupoId = body.get("grupoId") != null ? Long.valueOf(String.valueOf(body.get("grupoId"))) : 1L;
+        Long grupoId = controleAcesso.grupoId();
         boolean confirmado = body.get("confirmado") != null && Boolean.parseBoolean(String.valueOf(body.get("confirmado")));
-        Long autorId = body.get("autorId") != null ? Long.valueOf(String.valueOf(body.get("autorId"))) : null;
+        Long autorId = controleAcesso.usuarioId();
 
         Comando cmd = new Comando();
         cmd.setIntencao(body.get("intencao") != null ? String.valueOf(body.get("intencao")) : "registrar");
@@ -447,11 +487,14 @@ public class FinFamilyController {
         }
         cmd.setRecorrente(body.get("recorrente") != null && Boolean.parseBoolean(String.valueOf(body.get("recorrente"))));
 
+        controleAcesso.exigirConta(cmd.getContaId());
+        controleAcesso.exigirCategoriaUtilizavel(cmd.getCategoriaId());
         return ResponseEntity.ok(assistenteIAService.executar(grupoId, cmd, confirmado, autorId));
     }
 
     @GetMapping("/assistente/benchmark-50")
-    public ResponseEntity<Map<String, Object>> executarBenchmark50Comandos(@RequestParam(required = false, defaultValue = "1") Long grupoId) {
+    public ResponseEntity<Map<String, Object>> executarBenchmark50Comandos() {
+        Long grupoId = controleAcesso.grupoId();
         return ResponseEntity.ok(assistenteIAService.executarBateria50ComandosTeste(grupoId));
     }
 
@@ -460,9 +503,8 @@ public class FinFamilyController {
     // =========================================================================
 
     @GetMapping("/exportacao/csv")
-    public ResponseEntity<byte[]> exportarCsv(
-            @RequestParam(required = false, defaultValue = "1") Long grupoId,
-            @RequestParam(required = false) String mes) {
+    public ResponseEntity<byte[]> exportarCsv(@RequestParam(required = false) String mes) {
+        Long grupoId = controleAcesso.grupoId();
         byte[] bytes = exportacaoBackupService.exportarCSV(grupoId, mes);
         return ResponseEntity.ok()
                 .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"finfamily_relatorio.csv\"")
@@ -471,9 +513,8 @@ public class FinFamilyController {
     }
 
     @GetMapping("/exportacao/excel")
-    public ResponseEntity<byte[]> exportarExcel(
-            @RequestParam(required = false, defaultValue = "1") Long grupoId,
-            @RequestParam(required = false) String mes) {
+    public ResponseEntity<byte[]> exportarExcel(@RequestParam(required = false) String mes) {
+        Long grupoId = controleAcesso.grupoId();
         byte[] bytes = exportacaoBackupService.exportarExcel(grupoId, mes);
         return ResponseEntity.ok()
                 .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"finfamily_relatorio.xlsx\"")
@@ -482,9 +523,8 @@ public class FinFamilyController {
     }
 
     @GetMapping("/exportacao/pdf")
-    public ResponseEntity<byte[]> exportarPdf(
-            @RequestParam(required = false, defaultValue = "1") Long grupoId,
-            @RequestParam(required = false) String mes) {
+    public ResponseEntity<byte[]> exportarPdf(@RequestParam(required = false) String mes) {
+        Long grupoId = controleAcesso.grupoId();
         byte[] bytes = exportacaoBackupService.exportarPDF(grupoId, mes);
         return ResponseEntity.ok()
                 .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"finfamily_relatorio.pdf\"")

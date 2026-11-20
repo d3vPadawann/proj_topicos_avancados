@@ -41,17 +41,23 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                 Long usuarioId = usuarioIdNum != null ? usuarioIdNum.longValue() : 1L;
                 Long grupoId = grupoIdNum != null ? grupoIdNum.longValue() : 1L;
 
+                String status = claims.get("status", String.class);
+                String papelEfetivo = papel != null ? papel : "MEMBRO";
+
                 Map<String, Object> principalDetails = Map.of(
                         "email", email,
                         "usuarioId", usuarioId,
                         "grupoId", grupoId,
-                        "papel", papel != null ? papel : "MEMBRO"
+                        "papel", papelEfetivo
                 );
+
+                // Convidado que ainda nao aceitou o convite nao recebe as permissoes do papel (RF-007)
+                String autoridade = "CONVIDADO".equals(status) ? "ROLE_CONVIDADO" : "ROLE_" + papelEfetivo;
 
                 UsernamePasswordAuthenticationToken auth = new UsernamePasswordAuthenticationToken(
                         principalDetails,
                         null,
-                        List.of(new SimpleGrantedAuthority("ROLE_" + (papel != null ? papel : "MEMBRO")))
+                        List.of(new SimpleGrantedAuthority(autoridade))
                 );
                 SecurityContextHolder.getContext().setAuthentication(auth);
             }

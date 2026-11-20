@@ -81,12 +81,12 @@ public class AuthService {
             nomeGrupo = m.getGrupo().getNome();
             papelNoGrupo = m.getPapel();
             statusNoGrupo = m.getStatus();
+        } else if (papelNoGrupo == PapelFamiliar.SYSADMIN) {
+            // O Sysadmin nao pertence a nenhum grupo familiar e nao acessa dados financeiros (Secao 2.9)
+            grupoId = 0L;
+            nomeGrupo = "Administração do Sistema";
         } else {
-            List<GrupoFamiliar> todosGrupos = grupoFamiliarRepository.findAll();
-            if (!todosGrupos.isEmpty()) {
-                grupoId = todosGrupos.get(0).getId();
-                nomeGrupo = todosGrupos.get(0).getNome();
-            }
+            throw new IllegalStateException("Usuário sem vínculo com um grupo familiar. Peça um convite ao titular do grupo.");
         }
 
         String token = jwtTokenProvider.gerarToken(
@@ -94,7 +94,8 @@ public class AuthService {
                 usuario.getEmail(),
                 usuario.getNome(),
                 papelNoGrupo,
-                grupoId
+                grupoId,
+                statusNoGrupo.name()
         );
 
         auditLogService.registrar("LOGIN_SUCESSO", "AUTENTICACAO", email, "INFO",
@@ -142,16 +143,12 @@ public class AuthService {
             novo.setPapelPrincipal(papel);
             usuarioRepository.save(novo);
         } else {
-            List<GrupoFamiliar> existentes = grupoFamiliarRepository.findAll();
-            if (nomeGrupo == null || nomeGrupo.isBlank()) {
-                if (!existentes.isEmpty()) {
-                    grupo = existentes.get(0);
-                } else {
-                    grupo = grupoFamiliarRepository.save(new GrupoFamiliar("Família " + nome.split(" ")[0], novo));
-                }
-            } else {
-                grupo = grupoFamiliarRepository.save(new GrupoFamiliar(nomeGrupo, novo));
-            }
+            // Sem convite, o novo usuario sempre cria o proprio grupo e e o titular dele;
+            // nunca entra automaticamente em um grupo de outra familia.
+            String nomeDoGrupo = (nomeGrupo == null || nomeGrupo.isBlank())
+                    ? "Família " + nome.trim().split(" ")[0]
+                    : nomeGrupo;
+            grupo = grupoFamiliarRepository.save(new GrupoFamiliar(nomeDoGrupo, novo));
             Membro membroTitular = new Membro();
             membroTitular.setGrupo(grupo);
             membroTitular.setUsuario(novo);

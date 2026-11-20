@@ -115,28 +115,53 @@ function SeloModeloIA({ comando }) {
   );
 }
 
+// Sessao do usuario guardada no navegador junto com o token JWT (RF-001)
+function lerSessaoSalva() {
+  try {
+    const token = localStorage.getItem('finfamily_token');
+    const dados = localStorage.getItem('finfamily_usuario');
+    return token && dados ? JSON.parse(dados) : null;
+  } catch {
+    return null;
+  }
+}
+
+function salvarSessao(resp) {
+  try {
+    localStorage.setItem('finfamily_token', resp.token);
+    const { token, ...dadosUsuario } = resp;
+    localStorage.setItem('finfamily_usuario', JSON.stringify(dadosUsuario));
+  } catch {
+    // navegador sem armazenamento: a sessao vale ate recarregar a pagina
+  }
+}
+
+function apagarSessao() {
+  try {
+    localStorage.removeItem('finfamily_token');
+    localStorage.removeItem('finfamily_usuario');
+  } catch {
+    // ignora
+  }
+}
+
 export default function App() {
-  // Sessao e Autenticacao (RF-001)
-  const [usuario, setUsuario] = useState({
-    usuarioId: 1,
-    nome: 'Eduardo Rocha Santos (Titular)',
-    email: 'eduardorocha.santos@ucsal.edu.br',
-    papel: 'TITULAR',
-    grupoId: 1,
-    nomeGrupo: 'Família FinFamily UCSAL'
-  });
-  const [mostrarTelaLogin, setMostrarTelaLogin] = useState(false);
+  // Sessao e Autenticacao (RF-001): sem login, nenhum dado e carregado
+  const [usuario, setUsuario] = useState(lerSessaoSalva);
+  const [mostrarTelaLogin, setMostrarTelaLogin] = useState(() => !lerSessaoSalva());
   const [modoCadastro, setModoCadastro] = useState(false);
   const [formAuth, setFormAuth] = useState({
     nome: '',
-    email: 'eduardorocha.santos@ucsal.edu.br',
-    senha: '123456',
+    email: '',
+    senha: '',
     nomeGrupo: 'Família FinFamily UCSAL',
     documentoSensivel: '123.456.789-00'
   });
 
   // Navegacao entre Modulos
-  const [abaAtiva, setAbaAtiva] = useState('dashboard');
+  const [abaAtiva, setAbaAtiva] = useState(() =>
+    lerSessaoSalva()?.papel === 'SYSADMIN' ? 'seguranca' : 'dashboard'
+  );
   const [carregando, setCarregando] = useState(false);
   const [feedback, setFeedback] = useState(null); // { tipo: 'sucesso' | 'erro' | 'aviso', texto: '' }
 
@@ -250,9 +275,15 @@ export default function App() {
     }, 6500);
   };
 
-  const carregarTudo = async () => {
+  const carregarTudo = async (papel = usuario?.papel) => {
+    if (!papel) return;
     setCarregando(true);
     try {
+      if (papel === 'SYSADMIN') {
+        // O Sysadmin so acessa logs tecnicos e backup (UC13), nunca dados financeiros
+        setLogsSysadmin(await api.getLogsSysadmin());
+        return;
+      }
       const [
         dashData,
         contasData,
@@ -263,8 +294,7 @@ export default function App() {
         orcData,
         membData,
         cartData,
-        notifData,
-        logsData
+        notifData
       ] = await Promise.all([
         api.getDashboard(1),
         api.getContas(1),
@@ -275,8 +305,7 @@ export default function App() {
         api.getOrcamentos(1),
         api.getMembros(1),
         api.getCarteira(1),
-        api.getNotificacoes(1),
-        api.getLogsSysadmin()
+        api.getNotificacoes(1)
       ]);
 
       setDashboard(dashData);
@@ -289,7 +318,6 @@ export default function App() {
       setMembros(membData);
       setCarteira(cartData);
       setNotificacoes(notifData);
-      setLogsSysadmin(logsData);
 
       if (contasData.length > 0 && !novaTransacao.contaId) {
         setNovaTransacao((prev) => ({ ...prev, contaId: contasData[0].id }));
@@ -321,6 +349,11 @@ export default function App() {
     if (params.get('login') === 'true') {
       setMostrarTelaLogin(true);
     }
+    const aoExpirar = () => encerrarSessao('Sua sessão expirou. Faça login novamente.');
+    window.addEventListener('finfamily:sessao-expirada', aoExpirar);
+    if (!usuario) {
+      return () => window.removeEventListener('finfamily:sessao-expirada', aoExpirar);
+    }
     carregarTudo().then(() => {
       if (params.get('cardia') === 'true') {
         const cmdPadrao = 'Registrar gasto de R$ 45,90 na padaria hoje no cartão de crédito';
@@ -331,21 +364,44 @@ export default function App() {
         api.executarBenchmark50(1).then((b) => setBenchmark50(b)).catch(() => {});
       }
     });
+    return () => window.removeEventListener('finfamily:sessao-expirada', aoExpirar);
   }, []);
 
-  const trocarPerfilDemo = async (perfil) => {
+  const encerrarSessao = (mensagem) => {
+    apagarSessao();
+    setUsuario(null);
+    setModoCadastro(false);
+    setFormAuth((f) => ({ ...f, senha: '' }));
+    setMostrarTelaLogin(true);
+    if (mensagem) exibirMensagem('aviso', mensagem);
+  };
+
+  const entrarComSessao = (resp, mensagem) => {
+    salvarSessao(resp);
+    setUsuario(resp);
+    setMostrarTelaLogin(false);
+    setFormAuth((f) => ({ ...f, senha: '' }));
+    if (resp.papel === 'SYSADMIN') {
+      setAbaAtiva('seguranca');
+    } else if (abaAtiva === 'seguranca') {
+      setAbaAtiva('dashboard');
+    }
+    exibirMensagem('sucesso', mensagem);
+    carregarTudo(resp.papel);
+  };
+
+  // OE4: trocar de perfil exige autenticacao de verdade; o botao apenas preenche o e-mail
+  const trocarPerfilDemo = (perfil) => {
+    setModoCadastro(false);
+    setFormAuth((f) => ({ ...f, email: perfil.email, senha: '' }));
+    setMostrarTelaLogin(true);
+    exibirMensagem('aviso', `Digite a senha para entrar como ${perfil.nome} (${perfil.papel}).`);
+  };
+
+  const baixarExportacao = async (formato) => {
+    const nomes = { pdf: 'finfamily_relatorio.pdf', excel: 'finfamily_relatorio.xlsx', csv: 'finfamily_relatorio.csv' };
     try {
-      const resp = await api.login(perfil.email, '123456');
-      localStorage.setItem('finfamily_token', resp.token);
-      setUsuario(resp);
-      setMostrarTelaLogin(false);
-      if (resp.papel === 'SYSADMIN') {
-        setAbaAtiva('seguranca');
-      } else if (abaAtiva === 'seguranca' && resp.papel === 'AUDITOR') {
-        setAbaAtiva('dashboard');
-      }
-      exibirMensagem('sucesso', `Sessão alternada para: ${resp.nome} — Perfil: ${resp.papel} (OE4)`);
-      carregarTudo();
+      await api.baixar(`/exportacao/${formato}`, nomes[formato]);
     } catch (err) {
       exibirMensagem('erro', err.message);
     }
@@ -357,11 +413,7 @@ export default function App() {
       const resp = modoCadastro
         ? await api.register(formAuth)
         : await api.login(formAuth.email, formAuth.senha);
-      localStorage.setItem('finfamily_token', resp.token);
-      setUsuario(resp);
-      setMostrarTelaLogin(false);
-      exibirMensagem('sucesso', `Bem-vindo(a), ${resp.nome}! Autenticação JWT + BCrypt concluída (RF-001).`);
-      carregarTudo();
+      entrarComSessao(resp, `Bem-vindo(a), ${resp.nome}! Autenticação JWT + BCrypt concluída (RF-001).`);
     } catch (err) {
       exibirMensagem('erro', err.message);
     }
@@ -416,7 +468,7 @@ export default function App() {
         ...cardConfirmacaoIA,
         confirmado: true,
         grupoId: 1,
-        autorId: usuario?.usuarioId || 1
+        autorId: usuario?.usuarioId
       });
       setCardConfirmacaoIA(null);
       setTextoComandoIA('');
@@ -714,12 +766,14 @@ export default function App() {
               <h3 className="text-xl font-bold text-slate-900">
                 {modoCadastro ? 'Criar Conta Familiar (RF-001)' : 'Autenticação no Sistema (RF-001)'}
               </h3>
-              <button
-                onClick={() => setMostrarTelaLogin(false)}
-                className="text-xs text-slate-500 hover:text-slate-800 underline"
-              >
-                Voltar ao Painel
-              </button>
+              {usuario && (
+                <button
+                  onClick={() => setMostrarTelaLogin(false)}
+                  className="text-xs text-slate-500 hover:text-slate-800 underline"
+                >
+                  Voltar ao Painel
+                </button>
+              )}
             </div>
 
             <form onSubmit={handleLoginOuCadastro} className="space-y-4">
@@ -809,7 +863,7 @@ export default function App() {
     { id: 'relatorios', label: 'Relatórios & Exportar', icon: FileSpreadsheet, badge: 'RF-010' },
     { id: 'notificacoes', label: 'Alertas', icon: Bell, badge: naoLidasCount > 0 ? String(naoLidasCount) : 'RF-011' },
     { id: 'seguranca', label: 'LGPD & Sysadmin', icon: ShieldCheck, badge: 'UC13' }
-  ];
+  ].filter((item) => !isSysadmin || item.id === 'seguranca'); // Sysadmin nao acessa dados financeiros (Secao 2.9)
 
   return (
     <div className="min-h-screen bg-slate-50 flex flex-col">
@@ -869,11 +923,12 @@ export default function App() {
             </button>
 
             <button
-              onClick={() => setMostrarTelaLogin(true)}
+              onClick={() => encerrarSessao('Sessão encerrada.')}
               className="px-2.5 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-xs text-slate-200 flex items-center gap-1"
+              title={usuario ? `Conectado como ${usuario.nome} (${usuario.papel})` : ''}
             >
               <LogOut className="w-3.5 h-3.5" />
-              <span className="hidden sm:inline">Login / Conta</span>
+              <span className="hidden sm:inline">Sair</span>
             </button>
           </div>
         </div>
@@ -2632,11 +2687,10 @@ export default function App() {
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <a
-                href="/api/exportacao/pdf?grupoId=1"
-                target="_blank"
-                rel="noreferrer"
-                className="p-5 rounded-2xl bg-rose-50 hover:bg-rose-100/80 border border-rose-200 flex items-center justify-between transition"
+              <button
+                type="button"
+                onClick={() => baixarExportacao('pdf')}
+                className="p-5 rounded-2xl bg-rose-50 hover:bg-rose-100/80 border border-rose-200 flex items-center justify-between transition text-left w-full"
               >
                 <div>
                   <span className="text-[10px] font-bold uppercase px-2 py-0.5 rounded bg-rose-200 text-rose-900">
@@ -2648,13 +2702,12 @@ export default function App() {
                   </p>
                 </div>
                 <FileText className="w-8 h-8 text-rose-600 shrink-0" />
-              </a>
+              </button>
 
-              <a
-                href="/api/exportacao/excel?grupoId=1"
-                target="_blank"
-                rel="noreferrer"
-                className="p-5 rounded-2xl bg-emerald-50 hover:bg-emerald-100/80 border border-emerald-200 flex items-center justify-between transition"
+              <button
+                type="button"
+                onClick={() => baixarExportacao('excel')}
+                className="p-5 rounded-2xl bg-emerald-50 hover:bg-emerald-100/80 border border-emerald-200 flex items-center justify-between transition text-left w-full"
               >
                 <div>
                   <span className="text-[10px] font-bold uppercase px-2 py-0.5 rounded bg-emerald-200 text-emerald-900">
@@ -2666,13 +2719,12 @@ export default function App() {
                   </p>
                 </div>
                 <FileSpreadsheet className="w-8 h-8 text-emerald-600 shrink-0" />
-              </a>
+              </button>
 
-              <a
-                href="/api/exportacao/csv?grupoId=1"
-                target="_blank"
-                rel="noreferrer"
-                className="p-5 rounded-2xl bg-blue-50 hover:bg-blue-100/80 border border-blue-200 flex items-center justify-between transition"
+              <button
+                type="button"
+                onClick={() => baixarExportacao('csv')}
+                className="p-5 rounded-2xl bg-blue-50 hover:bg-blue-100/80 border border-blue-200 flex items-center justify-between transition text-left w-full"
               >
                 <div>
                   <span className="text-[10px] font-bold uppercase px-2 py-0.5 rounded bg-blue-200 text-blue-900">
@@ -2684,7 +2736,7 @@ export default function App() {
                   </p>
                 </div>
                 <Download className="w-8 h-8 text-blue-600 shrink-0" />
-              </a>
+              </button>
             </div>
           </div>
         )}
@@ -2781,7 +2833,7 @@ export default function App() {
                 <div className="flex flex-wrap gap-2 pt-1">
                   <button
                     onClick={async () => {
-                      const dados = await api.exportLgpd(usuario.usuarioId || 1);
+                      const dados = await api.exportLgpd(usuario.usuarioId);
                       setPacoteLgpd(dados);
                       exibirMensagem('sucesso', 'Pacote de Portabilidade LGPD gerado e descriptografado para o titular!');
                     }}

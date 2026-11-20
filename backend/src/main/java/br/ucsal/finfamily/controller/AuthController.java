@@ -1,6 +1,7 @@
 package br.ucsal.finfamily.controller;
 
 import br.ucsal.finfamily.domain.model.Usuario;
+import br.ucsal.finfamily.security.ControleAcesso;
 import br.ucsal.finfamily.service.AuthService;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -16,9 +17,11 @@ import java.util.Map;
 public class AuthController {
 
     private final AuthService authService;
+    private final ControleAcesso controleAcesso;
 
-    public AuthController(AuthService authService) {
+    public AuthController(AuthService authService, ControleAcesso controleAcesso) {
         this.authService = authService;
+        this.controleAcesso = controleAcesso;
     }
 
     @PostMapping("/login")
@@ -48,6 +51,7 @@ public class AuthController {
      */
     @GetMapping("/lgpd/export/{usuarioId}")
     public ResponseEntity<Map<String, Object>> exportarDadosLgpd(@PathVariable Long usuarioId) {
+        controleAcesso.exigirProprioUsuario(usuarioId);
         return ResponseEntity.ok(authService.exportarDadosLGPD(usuarioId));
     }
 
@@ -56,6 +60,7 @@ public class AuthController {
      */
     @DeleteMapping("/lgpd/delete/{usuarioId}")
     public ResponseEntity<Map<String, Object>> excluirContaLgpd(@PathVariable Long usuarioId) {
+        controleAcesso.exigirProprioUsuario(usuarioId);
         return ResponseEntity.ok(authService.excluirContaIrreversivelLGPD(usuarioId));
     }
 }

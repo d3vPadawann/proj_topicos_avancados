@@ -68,7 +68,7 @@ Basta dar um duplo clique no arquivo **`INICIAR_FINFAMILY.bat`** na raiz do proj
 - **Aplicação Completa (Front-End + API):** `http://localhost:8085`
 - **Console do Banco de Dados H2:** `http://localhost:8085/h2-console` (JDBC URL: `jdbc:h2:file:./data/finfamily_db`, Usuário: `sa`, Senha em branco)
 
-### Opção B — Executar Testes Automatizados JUnit 5 (21 testes, incluindo a integração com o LLM)
+### Opção B — Executar Testes Automatizados JUnit 5 (32 testes: regras de negócio, IA e controle de acesso)
 No PowerShell:
 ```powershell
 $env:JAVA_HOME = "G:\Program Files\Java\jdk-21"
@@ -81,14 +81,23 @@ cd backend
 
 ## 4. Credenciais de Demonstração (4 Perfis de Stakeholders — Seção 2.9 & OE4)
 
-Na tela de login (ou na barra superior de alternância rápida de perfil), você pode testar imediatamente os 4 perfis previstos no artigo:
+O sistema abre na tela de login. Os botões de perfil (na tela de login e na barra superior) apenas preenchem o e-mail; é preciso digitar a senha. Todos os usuários de demonstração usam a senha `123456` (definida no `DataSeederConfig`):
 
-| Perfil (OE4) | Nome | E-mail | Senha | Permissões |
-|---|---|---|---|---|
-| **TITULAR** | Eduardo Rocha Santos | `eduardorocha.santos@ucsal.edu.br` | `FinFamily@2026` | Acesso total ao grupo familiar, criação de contas, convites, orçamentos e investimentos |
-| **MEMBRO** | Daniel Teixeira Melo | `danielteixeira.melo@ucsal.edu.br` | `FinFamily@2026` | Lançamentos, importação CSV, Assistente IA e conta privada (`RN-001`) |
-| **AUDITOR** | Prof. Elton Figueiredo | `elton.figueiredo@pro.ucsal.edu.br` | `FinFamily@2026` | Acesso estrito de leitura aos painéis e relatórios consolidados |
-| **SYSADMIN** | Alexandre Villarino | `alexandrevillarino.silva@ucsal.edu.br` | `FinFamily@2026` | Visualização de logs técnicos mascarados (`UC13`) e execução de backups diários (`RNF-007`) |
+| Perfil (OE4) | Nome | E-mail | Permissões garantidas pelo back-end |
+|---|---|---|---|
+| **TITULAR** | Eduardo Rocha Santos | `eduardorocha.santos@ucsal.edu.br` | Acesso total ao próprio grupo: contas, categorias, orçamentos, membros e investimentos |
+| **MEMBRO** | Daniel Teixeira Melo | `danielteixeira.melo@ucsal.edu.br` | Lê os dados do grupo, lança transações, importa CSV, usa o Assistente IA e exporta relatórios; só exclui as transações que ele mesmo lançou |
+| **AUDITOR** | Prof. Elton Figueiredo | `elton.figueiredo@pro.ucsal.edu.br` | Somente leitura dos painéis e relatórios (sem gravar e sem exportar) |
+| **SYSADMIN** | Alexandre Villarino | `alexandrevillarino.silva@ucsal.edu.br` | Somente logs técnicos (`UC13`) e backup (`RNF-007`); não acessa dados financeiros |
+| *Convidado* | Marcos Vinicius Batista | `marcos.batista@ucsal.edu.br` | Convite ainda não aceito: não vê os dados do grupo até aceitar |
+
+### 4.1. Como o controle de acesso funciona
+
+- Toda a API exige o token JWT recebido no login, exceto login, cadastro e `/api/health`. Sem token, a resposta é **401**; com um perfil sem permissão, **403**.
+- O usuário, o grupo familiar e o papel vêm sempre do token; o `grupoId` ou o `autorId` enviados pelo navegador são ignorados.
+- As regras por perfil ficam em `security/SecurityConfig.java`; a verificação de que cada conta, transação, membro etc. pertence ao grupo do usuário fica em `security/ControleAcesso.java`.
+- A exportação e a exclusão de dados da LGPD valem apenas para o próprio usuário logado, e o CPF nunca aparece nas respostas da API.
+- Os testes em `ControleAcessoTests` comprovam cada regra (por exemplo: o Auditor tenta criar uma conta e recebe 403).
 
 ---
 

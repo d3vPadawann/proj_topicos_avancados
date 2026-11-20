@@ -52,10 +52,11 @@ class FinFamilyApiAndPerformanceTests {
     @DisplayName("RNF-001: Tempo de resposta de leitura deve ser inferior a 500ms no 95o percentil")
     void deveAtenderMetaDeLatenciaP95InferiorA500msRNF001() throws Exception {
         List<Long> latenciasMs = new ArrayList<>();
+        String token = LoginDeTeste.bearer(mockMvc, LoginDeTeste.TITULAR);
 
         for (int i = 0; i < 20; i++) {
             long t0 = System.nanoTime();
-            mockMvc.perform(get("/api/dashboard?grupoId=1"))
+            mockMvc.perform(get("/api/dashboard").header("Authorization", token))
                     .andExpect(status().isOk())
                     .andExpect(jsonPath("$.patrimonioLiquidoFamiliar").isNumber());
             long elapsedMs = (System.nanoTime() - t0) / 1_000_000;

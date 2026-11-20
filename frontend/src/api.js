@@ -17,6 +17,10 @@ async function request(path, options = {}) {
       ...(options.headers || {}),
     },
   });
+  if (res.status === 401 && !path.startsWith('/auth/login')) {
+    // Token ausente, invalido ou expirado: volta para a tela de login
+    window.dispatchEvent(new Event('finfamily:sessao-expirada'));
+  }
   if (!res.ok) {
     let errMsg = `Erro HTTP ${res.status}`;
     try {
@@ -30,7 +34,35 @@ async function request(path, options = {}) {
   return res.json();
 }
 
+// Baixa um arquivo da API enviando o token JWT (usado nas exportacoes PDF, Excel e CSV)
+async function baixar(path, nomeArquivo) {
+  const res = await fetch(`${API_BASE}${path}`, { headers: getHeaders() });
+  if (res.status === 401) {
+    window.dispatchEvent(new Event('finfamily:sessao-expirada'));
+  }
+  if (!res.ok) {
+    let errMsg = `Erro HTTP ${res.status}`;
+    try {
+      const errJson = await res.json();
+      errMsg = errJson.mensagem || errMsg;
+    } catch {
+      // ignore
+    }
+    throw new Error(errMsg);
+  }
+  const blob = await res.blob();
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = nomeArquivo;
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  URL.revokeObjectURL(url);
+}
+
 export const api = {
+  baixar,
   // Autenticacao e LGPD (RF-001, RNF-004)
   login: (email, senha) =>
     request('/auth/login', { method: 'POST', body: JSON.stringify({ email, senha }) }),
