@@ -25,3 +25,6 @@ yarn-error.log*
 Thumbs.db
 __pycache__/
 *.pyc
+
+# Chave da IA (nunca versionar)
+backend/config/ia.properties

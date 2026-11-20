@@ -38,7 +38,7 @@ O provedor é escolhido pela variável `FINFAMILY_AI_PROVEDOR` (padrão `AUTO`):
 | Valor | Comportamento |
 |---|---|
 | `AUTO` | Usa o Gemini se `GEMINI_API_KEY` estiver definida; senão tenta o Ollama local. |
-| `GEMINI` | Usa a API do Google Gemini (modelo em `GEMINI_MODEL`, padrão `gemini-2.0-flash`). |
+| `GEMINI` | Usa a API do Google Gemini (modelo em `GEMINI_MODEL`, padrão `gemini-3.5-flash-lite`). |
 | `OLLAMA` | Usa um modelo local do Ollama (`OLLAMA_MODEL`, padrão `llama3.2`); o texto não sai da máquina. |
 | `LOCAL` | Não chama IA; só o motor de contingência (usado nos testes automatizados). |
 

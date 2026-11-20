@@ -12,6 +12,7 @@ import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.time.Duration;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -46,11 +47,15 @@ public class ClienteLLM {
     @Value("${finfamily.ai.gemini-api-url:https://generativelanguage.googleapis.com/v1beta/models}")
     private String geminiApiUrl;
 
-    @Value("${finfamily.ai.gemini-model:gemini-2.0-flash}")
+    @Value("${finfamily.ai.gemini-model:gemini-3.5-flash-lite}")
     private String geminiModel;
 
     @Value("${finfamily.ai.gemini-api-key:}")
     private String geminiApiKey;
+
+    /** Nivel de "raciocinio" do Gemini (minimal, low, medium, high). Vazio = padrao do modelo. */
+    @Value("${finfamily.ai.gemini-thinking-level:}")
+    private String geminiThinkingLevel;
 
     @Value("${finfamily.ai.ollama-url:http://localhost:11434/api/generate}")
     private String ollamaUrl;
@@ -98,12 +103,16 @@ public class ClienteLLM {
     }
 
     private Optional<RespostaLLM> chamarGemini(String prompt) throws Exception {
+        Map<String, Object> generationConfig = new LinkedHashMap<>();
+        generationConfig.put("responseMimeType", "application/json");
+        generationConfig.put("temperature", 0);
+        if (geminiThinkingLevel != null && !geminiThinkingLevel.isBlank()) {
+            // Menos raciocinio = resposta mais rapida e estavel (meta de 3 s da Secao 11.3)
+            generationConfig.put("thinkingConfig", Map.of("thinkingLevel", geminiThinkingLevel.trim()));
+        }
         String payload = objectMapper.writeValueAsString(Map.of(
                 "contents", List.of(Map.of("parts", List.of(Map.of("text", prompt)))),
-                "generationConfig", Map.of(
-                        "responseMimeType", "application/json",
-                        "temperature", 0
-                )
+                "generationConfig", generationConfig
         ));
 
         HttpRequest request = HttpRequest.newBuilder()
@@ -116,7 +125,7 @@ public class ClienteLLM {
 
         HttpResponse<String> response = novoHttpClient().send(request, HttpResponse.BodyHandlers.ofString());
         if (response.statusCode() != 200) {
-            log.warn("Gemini respondeu HTTP {}", response.statusCode());
+            log.warn("Gemini ({}) respondeu HTTP {}: {}", geminiModel, response.statusCode(), resumir(response.body()));
             return Optional.empty();
         }
         JsonNode root = objectMapper.readTree(response.body());
@@ -142,7 +151,7 @@ public class ClienteLLM {
 
         HttpResponse<String> response = novoHttpClient().send(request, HttpResponse.BodyHandlers.ofString());
         if (response.statusCode() != 200) {
-            log.warn("Ollama respondeu HTTP {}", response.statusCode());
+            log.warn("Ollama ({}) respondeu HTTP {}: {}", ollamaModel, response.statusCode(), resumir(response.body()));
             return Optional.empty();
         }
         JsonNode root = objectMapper.readTree(response.body());
@@ -150,9 +159,30 @@ public class ClienteLLM {
         return texto.isBlank() ? Optional.empty() : Optional.of(new RespostaLLM("OLLAMA (" + ollamaModel + ")", texto));
     }
 
+    private static String resumir(String corpo) {
+        if (corpo == null) return "";
+        String c = corpo.replaceAll("\\s+", " ").trim();
+        return c.length() > 300 ? c.substring(0, 300) + "..." : c;
+    }
+
+    /**
+     * Um unico HttpClient reaproveita a conexao TLS entre as chamadas (keep-alive),
+     * evitando refazer o handshake com o servidor da IA a cada comando.
+     */
+    private volatile HttpClient httpClient;
+
     private HttpClient novoHttpClient() {
-        return HttpClient.newBuilder()
-                .connectTimeout(Duration.ofMillis(Math.min(timeoutMs, 1000)))
-                .build();
+        HttpClient c = httpClient;
+        if (c == null) {
+            synchronized (this) {
+                if (httpClient == null) {
+                    httpClient = HttpClient.newBuilder()
+                            .connectTimeout(Duration.ofMillis(Math.min(timeoutMs, 2000)))
+                            .build();
+                }
+                c = httpClient;
+            }
+        }
+        return c;
     }
 }

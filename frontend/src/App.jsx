@@ -89,6 +89,32 @@ const PERFIS_DEMO = [
   }
 ];
 
+// Mostra qual modelo de IA interpretou o comando (ex.: "GEMINI (gemini-3.5-flash-lite)")
+function SeloModeloIA({ comando }) {
+  if (!comando) return null;
+  const provedor = String(comando.provedorIA || '');
+  const contingencia = provedor.startsWith('CONTINGENCIA');
+  const casamento = provedor.match(/^(\w+)\s*\((.+)\)$/);
+  const servico = casamento ? casamento[1] : provedor;
+  const modelo = casamento ? casamento[2] : '';
+  return (
+    <span className="flex flex-wrap items-center gap-1.5">
+      <span
+        className={`px-2 py-0.5 rounded-full text-[11px] font-semibold ${
+          contingencia ? 'bg-slate-200 text-slate-700' : 'bg-indigo-100 text-indigo-800'
+        }`}
+      >
+        {contingencia
+          ? 'IA indisponível — motor local de contingência'
+          : `IA: ${servico}${modelo ? ` • Modelo: ${modelo}` : ''}`}
+      </span>
+      {comando.tempoRespostaMs != null && (
+        <span className="text-xs text-slate-500">em {comando.tempoRespostaMs}ms</span>
+      )}
+    </span>
+  );
+}
+
 export default function App() {
   // Sessao e Autenticacao (RF-001)
   const [usuario, setUsuario] = useState({
@@ -1021,18 +1047,7 @@ export default function App() {
                       <span className="px-2.5 py-1 rounded-full bg-amber-100 text-amber-800 font-bold text-xs">
                         RN-006: Confirmação Obrigatória do Lançamento
                       </span>
-                      <span
-                        className={`px-2 py-0.5 rounded-full text-[11px] font-semibold ${
-                          String(cardConfirmacaoIA.provedorIA || '').startsWith('CONTINGENCIA')
-                            ? 'bg-slate-200 text-slate-700'
-                            : 'bg-indigo-100 text-indigo-800'
-                        }`}
-                      >
-                        {String(cardConfirmacaoIA.provedorIA || '').startsWith('CONTINGENCIA')
-                          ? 'IA indisponível — motor local de contingência'
-                          : `Interpretado pela IA: ${cardConfirmacaoIA.provedorIA}`}
-                      </span>
-                      <span className="text-xs text-slate-500">em {cardConfirmacaoIA.tempoRespostaMs}ms</span>
+                      <SeloModeloIA comando={cardConfirmacaoIA} />
                     </div>
                     <span className="text-[11px] text-emerald-700 font-medium flex items-center gap-1">
                       <Lock className="w-3.5 h-3.5" /> RNF-004: Zero saldos ou CPF enviados ao modelo
@@ -1150,6 +1165,7 @@ export default function App() {
                     <span className="px-2.5 py-0.5 rounded-full bg-blue-100 text-blue-800 font-bold text-xs">
                       Resposta da Consulta Calculada no Banco Local (RN-006)
                     </span>
+                    <SeloModeloIA comando={resultadoConsultaIA.comando} />
                     <button
                       onClick={() => setResultadoConsultaIA(null)}
                       className="text-xs text-slate-500 hover:text-slate-800"
