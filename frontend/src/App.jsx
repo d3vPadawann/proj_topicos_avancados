@@ -115,11 +115,16 @@ function SeloModeloIA({ comando }) {
   );
 }
 
-// Sessao do usuario guardada no navegador junto com o token JWT (RF-001)
+// Sessao do usuario guardada junto com o token JWT (RF-001).
+// Usa sessionStorage, que e separado por aba: cada aba tem a propria conta, e o login
+// feito em uma aba nunca troca o usuario de outra (o localStorage seria compartilhado).
 function lerSessaoSalva() {
   try {
-    const token = localStorage.getItem('finfamily_token');
-    const dados = localStorage.getItem('finfamily_usuario');
+    // Remove sessoes antigas compartilhadas entre abas (versoes anteriores usavam localStorage)
+    localStorage.removeItem('finfamily_token');
+    localStorage.removeItem('finfamily_usuario');
+    const token = sessionStorage.getItem('finfamily_token');
+    const dados = sessionStorage.getItem('finfamily_usuario');
     return token && dados ? JSON.parse(dados) : null;
   } catch {
     return null;
@@ -128,9 +133,9 @@ function lerSessaoSalva() {
 
 function salvarSessao(resp) {
   try {
-    localStorage.setItem('finfamily_token', resp.token);
+    sessionStorage.setItem('finfamily_token', resp.token);
     const { token, ...dadosUsuario } = resp;
-    localStorage.setItem('finfamily_usuario', JSON.stringify(dadosUsuario));
+    sessionStorage.setItem('finfamily_usuario', JSON.stringify(dadosUsuario));
   } catch {
     // navegador sem armazenamento: a sessao vale ate recarregar a pagina
   }
@@ -138,8 +143,8 @@ function salvarSessao(resp) {
 
 function apagarSessao() {
   try {
-    localStorage.removeItem('finfamily_token');
-    localStorage.removeItem('finfamily_usuario');
+    sessionStorage.removeItem('finfamily_token');
+    sessionStorage.removeItem('finfamily_usuario');
   } catch {
     // ignora
   }

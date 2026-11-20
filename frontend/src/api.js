@@ -1,7 +1,12 @@
 const API_BASE = '/api';
 
 function getHeaders() {
-  const token = localStorage.getItem('finfamily_token');
+  let token = null;
+  try {
+    token = sessionStorage.getItem('finfamily_token'); // sessao separada por aba
+  } catch {
+    // navegador sem armazenamento
+  }
   const headers = { 'Content-Type': 'application/json' };
   if (token) {
     headers['Authorization'] = `Bearer ${token}`;
