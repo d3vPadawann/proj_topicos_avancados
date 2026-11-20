@@ -164,6 +164,33 @@ class ControleAcessoTests {
         mockMvc.perform(get("/api/dashboard").header("Authorization", convidado)).andExpect(status().isForbidden());
     }
 
+    @Test
+    @DisplayName("RF-007 / BPMN Figura 2: so o proprio convidado responde ao convite")
+    void soOConvidadoRespondeAoConvite() throws Exception {
+        String login = mockMvc.perform(post("/api/auth/login")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"email\":\"" + LoginDeTeste.CONVIDADO + "\",\"senha\":\"123456\"}"))
+                .andExpect(status().isOk())
+                .andReturn().getResponse().getContentAsString();
+        JsonNode resp = JSON.readTree(login);
+        assertEquals("CONVIDADO", resp.get("statusMembro").asText());
+        long membroId = resp.get("membroId").asLong();
+
+        String titular = token(LoginDeTeste.TITULAR);
+        mockMvc.perform(post("/api/grupo/membros/" + membroId + "/resposta").header("Authorization", titular)
+                        .contentType(MediaType.APPLICATION_JSON).content("{\"aceitar\":true}"))
+                .andExpect(status().isForbidden());
+
+        String convidado = "Bearer " + resp.get("token").asText();
+        mockMvc.perform(post("/api/grupo/membros/" + membroId + "/resposta").header("Authorization", convidado)
+                        .contentType(MediaType.APPLICATION_JSON).content("{\"aceitar\":true}"))
+                .andExpect(status().isOk());
+
+        // Depois de aceitar, um novo login ja da acesso aos dados do grupo
+        mockMvc.perform(get("/api/dashboard").header("Authorization", token(LoginDeTeste.CONVIDADO)))
+                .andExpect(status().isOk());
+    }
+
     // ---------------------------------------------------------------- LGPD
 
     @Test

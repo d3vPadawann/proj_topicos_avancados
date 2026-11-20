@@ -108,6 +108,8 @@ public class AuthService {
         resposta.put("email", usuario.getEmail());
         resposta.put("papel", papelNoGrupo.name());
         resposta.put("statusMembro", statusNoGrupo.name());
+        // Usado pelo convidado para aceitar ou recusar o proprio convite (RF-007, BPMN Figura 2)
+        resposta.put("membroId", membros.isEmpty() ? null : membros.get(0).getId());
         resposta.put("grupoId", grupoId);
         resposta.put("nomeGrupo", nomeGrupo);
         return resposta;

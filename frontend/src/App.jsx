@@ -150,6 +150,19 @@ function apagarSessao() {
   }
 }
 
+// Aviso exibido no lugar de um formulario que o perfil logado nao pode usar (OE4)
+function CardPermissao({ titulo, texto }) {
+  return (
+    <div className="bg-slate-50 rounded-2xl p-5 border border-dashed border-slate-300 h-fit text-xs text-slate-600">
+      <div className="flex items-center gap-2 font-bold text-slate-800 mb-1">
+        <Lock className="w-4 h-4 text-slate-500" />
+        <span>{titulo}</span>
+      </div>
+      <p>{texto}</p>
+    </div>
+  );
+}
+
 export default function App() {
   // Sessao e Autenticacao (RF-001): sem login, nenhum dado e carregado
   const [usuario, setUsuario] = useState(lerSessaoSalva);
@@ -272,6 +285,8 @@ export default function App() {
   const isSomenteLeituraAuditor = usuario?.papel === 'AUDITOR';
   const isSysadmin = usuario?.papel === 'SYSADMIN';
   const isTitular = usuario?.papel === 'TITULAR';
+  // Permissoes na tela espelham as regras do back-end (SecurityConfig): so mostra o que o perfil pode fazer
+  const podeLancar = isTitular || usuario?.papel === 'MEMBRO';
 
   const exibirMensagem = (tipo, texto) => {
     setFeedback({ tipo, texto });
@@ -356,7 +371,7 @@ export default function App() {
     }
     const aoExpirar = () => encerrarSessao('Sua sessão expirou. Faça login novamente.');
     window.addEventListener('finfamily:sessao-expirada', aoExpirar);
-    if (!usuario) {
+    if (!usuario || usuario.statusMembro === 'CONVIDADO') {
       return () => window.removeEventListener('finfamily:sessao-expirada', aoExpirar);
     }
     carregarTudo().then(() => {
@@ -392,7 +407,10 @@ export default function App() {
       setAbaAtiva('dashboard');
     }
     exibirMensagem('sucesso', mensagem);
-    carregarTudo(resp.papel);
+    // Convidado ainda nao ve os dados do grupo: so a tela de convite
+    if (resp.statusMembro !== 'CONVIDADO') {
+      carregarTudo(resp.papel);
+    }
   };
 
   // OE4: trocar de perfil exige autenticacao de verdade; o botao apenas preenche o e-mail
@@ -870,6 +888,57 @@ export default function App() {
     { id: 'seguranca', label: 'LGPD & Sysadmin', icon: ShieldCheck, badge: 'UC13' }
   ].filter((item) => !isSysadmin || item.id === 'seguranca'); // Sysadmin nao acessa dados financeiros (Secao 2.9)
 
+  // RF-007 e BPMN Figura 2: o convidado responde ao proprio convite antes de acessar o grupo
+  if (usuario?.statusMembro === 'CONVIDADO') {
+    const responderMeuConvite = async (aceitar) => {
+      try {
+        await api.responderConvite(usuario.membroId, aceitar);
+        encerrarSessao(
+          aceitar
+            ? 'Convite aceito! Entre novamente para acessar o grupo familiar.'
+            : 'Convite recusado. Você não faz parte do grupo.'
+        );
+      } catch (err) {
+        exibirMensagem('erro', err.message);
+      }
+    };
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-slate-900 via-blue-950 to-indigo-950 flex items-center justify-center p-4">
+        <div className="bg-white rounded-2xl shadow-2xl p-8 max-w-md w-full space-y-4">
+          <div className="flex items-center gap-2">
+            <Users className="w-6 h-6 text-blue-600" />
+            <h2 className="text-lg font-bold text-slate-900">Convite para o grupo familiar</h2>
+          </div>
+          <p className="text-sm text-slate-600">
+            Olá, <strong>{usuario.nome}</strong>! Você foi convidado(a) para participar de{' '}
+            <strong>{usuario.nomeGrupo}</strong> com o perfil <strong>{usuario.papel}</strong>. Os dados do grupo
+            ficam disponíveis depois que você aceitar o convite (RF-007).
+          </p>
+          {feedback?.tipo === 'erro' && (
+            <div className="text-xs px-3 py-2 rounded-lg bg-rose-50 text-rose-700 border border-rose-200">{feedback.texto}</div>
+          )}
+          <div className="flex gap-2">
+            <button
+              onClick={() => responderMeuConvite(true)}
+              className="flex-1 py-2 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-bold"
+            >
+              Aceitar convite
+            </button>
+            <button
+              onClick={() => responderMeuConvite(false)}
+              className="flex-1 py-2 rounded-lg bg-rose-100 hover:bg-rose-200 text-rose-700 text-sm font-bold"
+            >
+              Recusar
+            </button>
+          </div>
+          <button onClick={() => encerrarSessao()} className="w-full text-xs text-slate-500 hover:text-slate-800 underline">
+            Sair
+          </button>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-slate-50 flex flex-col">
       {/* Barra Superior Executiva */}
@@ -1047,57 +1116,63 @@ export default function App() {
                 </button>
               </div>
 
-              <form onSubmit={(e) => handleInterpretarComandoIA(e)} className="flex flex-col sm:flex-row gap-2">
-                <div className="relative flex-1">
-                  <input
-                    type="text"
-                    value={textoComandoIA}
-                    onChange={(e) => setTextoComandoIA(e.target.value)}
-                    placeholder='Ex: "Registrar gasto de R$ 45,90 na padaria hoje no cartão de crédito" ou "Quanto eu já gastei com Uber este mês?"'
-                    className="w-full pl-4 pr-11 py-3 rounded-xl bg-white/10 border border-white/20 text-white placeholder-blue-200/60 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400"
-                  />
+              {podeLancar ? (
+                <form onSubmit={(e) => handleInterpretarComandoIA(e)} className="flex flex-col sm:flex-row gap-2">
+                  <div className="relative flex-1">
+                    <input
+                      type="text"
+                      value={textoComandoIA}
+                      onChange={(e) => setTextoComandoIA(e.target.value)}
+                      placeholder='Ex: "Registrar gasto de R$ 45,90 na padaria hoje no cartão de crédito" ou "Quanto eu já gastei com Uber este mês?"'
+                      className="w-full pl-4 pr-11 py-3 rounded-xl bg-white/10 border border-white/20 text-white placeholder-blue-200/60 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400"
+                    />
+                    <button
+                      type="button"
+                      onClick={iniciarReconhecimentoVoz}
+                      className={`absolute right-2.5 top-2.5 p-1.5 rounded-lg transition ${
+                        ouvindoVoz ? 'bg-rose-500 text-white animate-pulse' : 'bg-white/10 hover:bg-white/20 text-blue-200'
+                      }`}
+                      title="Ditar comando por voz (Web Speech API - Seção 11.2)"
+                    >
+                      {ouvindoVoz ? <MicOff className="w-4 h-4" /> : <Mic className="w-4 h-4" />}
+                    </button>
+                  </div>
                   <button
-                    type="button"
-                    onClick={iniciarReconhecimentoVoz}
-                    className={`absolute right-2.5 top-2.5 p-1.5 rounded-lg transition ${
-                      ouvindoVoz ? 'bg-rose-500 text-white animate-pulse' : 'bg-white/10 hover:bg-white/20 text-blue-200'
-                    }`}
-                    title="Ditar comando por voz (Web Speech API - Seção 11.2)"
+                    type="submit"
+                    className="px-5 py-3 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-semibold text-sm flex items-center justify-center gap-2 shadow transition"
                   >
-                    {ouvindoVoz ? <MicOff className="w-4 h-4" /> : <Mic className="w-4 h-4" />}
+                    <Sparkles className="w-4 h-4" />
+                    <span>Interpretar com IA</span>
                   </button>
-                </div>
-                <button
-                  type="submit"
-                  className="px-5 py-3 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-semibold text-sm flex items-center justify-center gap-2 shadow transition"
-                >
-                  <Sparkles className="w-4 h-4" />
-                  <span>Interpretar com IA</span>
-                </button>
-              </form>
+                </form>
+              ) : (
+                <p className="text-xs text-blue-200 bg-white/10 rounded-xl px-4 py-3">O perfil Auditor tem acesso somente de leitura: o assistente registra e consulta lançamentos apenas para o Titular e o Membro (RN-006).</p>
+              )}
 
               {/* Sugestoes Rapidas da Secao 11.1 do Artigo */}
-              <div className="mt-3 flex flex-wrap items-center gap-1.5 text-xs">
-                <span className="text-blue-300/80 text-[11px] mr-1">Exemplos do Artigo:</span>
-                {[
-                  'Registrar gasto de R$ 45,90 na padaria hoje no cartão de crédito',
-                  'Quanto eu já gastei com Uber este mês?',
-                  'Quanto gastamos com Alimentação este mês?',
-                  'Lançar compra de R$ 1.500,00 de notebook em 10x no cartão de crédito'
-                ].map((ex, i) => (
-                  <button
-                    key={i}
-                    type="button"
-                    onClick={() => {
-                      setTextoComandoIA(ex);
-                      handleInterpretarComandoIA(null, ex);
-                    }}
-                    className="px-2.5 py-1 rounded-lg bg-white/10 hover:bg-white/20 text-blue-100 text-[11px] transition"
-                  >
-                    “{ex}”
-                  </button>
-                ))}
-              </div>
+              {podeLancar && (
+                <div className="mt-3 flex flex-wrap items-center gap-1.5 text-xs">
+                  <span className="text-blue-300/80 text-[11px] mr-1">Exemplos do Artigo:</span>
+                  {[
+                    'Registrar gasto de R$ 45,90 na padaria hoje no cartão de crédito',
+                    'Quanto eu já gastei com Uber este mês?',
+                    'Quanto gastamos com Alimentação este mês?',
+                    'Lançar compra de R$ 1.500,00 de notebook em 10x no cartão de crédito'
+                  ].map((ex, i) => (
+                    <button
+                      key={i}
+                      type="button"
+                      onClick={() => {
+                        setTextoComandoIA(ex);
+                        handleInterpretarComandoIA(null, ex);
+                      }}
+                      className="px-2.5 py-1 rounded-lg bg-white/10 hover:bg-white/20 text-blue-100 text-[11px] transition"
+                    >
+                      “{ex}”
+                    </button>
+                  ))}
+                </div>
+              )}
 
               {/* CARD DE CONFIRMACAO OBRIGATORIA DO ASSISTENTE IA (RN-006) */}
               {cardConfirmacaoIA && (
@@ -1579,27 +1654,29 @@ export default function App() {
                         </div>
                       </div>
 
-                      <div className="mt-3 pt-2.5 border-t border-slate-200/80 flex items-center justify-between text-xs">
-                        <button
-                          onClick={() => handleAlternarPrivacidadeConta(c)}
-                          className="text-blue-600 hover:underline font-medium flex items-center gap-1"
-                        >
-                          {c.privada ? 'Tornar Compartilhada' : 'Marcar como Privada (RN-001)'}
-                        </button>
-
-                        <button
-                          onClick={() => handleExcluirConta(c)}
-                          className={`px-2.5 py-1 rounded-lg font-semibold flex items-center gap-1 ${
-                            Number(c.saldo) === 0
-                              ? 'bg-emerald-100 text-emerald-800 hover:bg-emerald-200'
-                              : 'bg-rose-100 text-rose-700 hover:bg-rose-200'
-                          }`}
-                          title="RN-002: Só permite excluir se saldo == 0"
-                        >
-                          <Trash2 className="w-3.5 h-3.5" />
-                          <span>{Number(c.saldo) === 0 ? 'Excluir (Saldo 0)' : 'Testar Bloqueio RN-002'}</span>
-                        </button>
-                      </div>
+                      {isTitular && (
+                        <div className="mt-3 pt-2.5 border-t border-slate-200/80 flex items-center justify-between text-xs">
+                          <button
+                            onClick={() => handleAlternarPrivacidadeConta(c)}
+                            className="text-blue-600 hover:underline font-medium flex items-center gap-1"
+                          >
+                            {c.privada ? 'Tornar Compartilhada' : 'Marcar como Privada (RN-001)'}
+                          </button>
+  
+                          <button
+                            onClick={() => handleExcluirConta(c)}
+                            className={`px-2.5 py-1 rounded-lg font-semibold flex items-center gap-1 ${
+                              Number(c.saldo) === 0
+                                ? 'bg-emerald-100 text-emerald-800 hover:bg-emerald-200'
+                                : 'bg-rose-100 text-rose-700 hover:bg-rose-200'
+                            }`}
+                            title="RN-002: Só permite excluir se saldo == 0"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                            <span>{Number(c.saldo) === 0 ? 'Excluir (Saldo 0)' : 'Testar Bloqueio RN-002'}</span>
+                          </button>
+                        </div>
+                      )}
                     </div>
                   ))}
                 </div>
@@ -1607,101 +1684,105 @@ export default function App() {
             </div>
 
             {/* Formulario de Nova Conta */}
-            <div className="bg-white rounded-2xl p-5 shadow-sm border border-slate-200 h-fit">
-              <h3 className="text-sm font-bold text-slate-900 mb-3">Cadastrar Nova Conta / Cartão (RF-002)</h3>
-              <form onSubmit={handleCriarConta} className="space-y-3 text-xs">
-                <div>
-                  <label className="font-semibold text-slate-700 block mb-1">Nome da Conta ou Cartão</label>
-                  <input
-                    type="text"
-                    required
-                    value={novaConta.nome}
-                    onChange={(e) => setNovaConta({ ...novaConta, nome: e.target.value })}
-                    placeholder="Ex: Conta Corrente Bradesco"
-                    className="w-full px-3 py-2 border border-slate-300 rounded-lg"
-                  />
-                </div>
-                <div>
-                  <label className="font-semibold text-slate-700 block mb-1">Instituição Financeira</label>
-                  <input
-                    type="text"
-                    value={novaConta.instituicao}
-                    onChange={(e) => setNovaConta({ ...novaConta, instituicao: e.target.value })}
-                    placeholder="Ex: Bradesco / Nubank / XP"
-                    className="w-full px-3 py-2 border border-slate-300 rounded-lg"
-                  />
-                </div>
-                <div className="grid grid-cols-2 gap-2">
+            {isTitular ? (
+              <div className="bg-white rounded-2xl p-5 shadow-sm border border-slate-200 h-fit">
+                <h3 className="text-sm font-bold text-slate-900 mb-3">Cadastrar Nova Conta / Cartão (RF-002)</h3>
+                <form onSubmit={handleCriarConta} className="space-y-3 text-xs">
                   <div>
-                    <label className="font-semibold text-slate-700 block mb-1">Tipo de Conta (OE1)</label>
-                    <select
-                      value={novaConta.tipo}
-                      onChange={(e) => setNovaConta({ ...novaConta, tipo: e.target.value })}
-                      className="w-full px-3 py-2 border border-slate-300 rounded-lg"
-                    >
-                      <option value="CORRENTE">Conta Corrente</option>
-                      <option value="POUPANCA">Conta Poupança</option>
-                      <option value="CARTAO_CREDITO">Cartão de Crédito</option>
-                      <option value="CORRETORA">Conta Corretora</option>
-                    </select>
-                  </div>
-                  <div>
-                    <label className="font-semibold text-slate-700 block mb-1">Saldo Inicial (R$)</label>
+                    <label className="font-semibold text-slate-700 block mb-1">Nome da Conta ou Cartão</label>
                     <input
-                      type="number"
-                      step="0.01"
-                      value={novaConta.saldo}
-                      onChange={(e) => setNovaConta({ ...novaConta, saldo: e.target.value })}
+                      type="text"
+                      required
+                      value={novaConta.nome}
+                      onChange={(e) => setNovaConta({ ...novaConta, nome: e.target.value })}
+                      placeholder="Ex: Conta Corrente Bradesco"
                       className="w-full px-3 py-2 border border-slate-300 rounded-lg"
                     />
                   </div>
-                </div>
-
-                {novaConta.tipo === 'CARTAO_CREDITO' && (
+                  <div>
+                    <label className="font-semibold text-slate-700 block mb-1">Instituição Financeira</label>
+                    <input
+                      type="text"
+                      value={novaConta.instituicao}
+                      onChange={(e) => setNovaConta({ ...novaConta, instituicao: e.target.value })}
+                      placeholder="Ex: Bradesco / Nubank / XP"
+                      className="w-full px-3 py-2 border border-slate-300 rounded-lg"
+                    />
+                  </div>
                   <div className="grid grid-cols-2 gap-2">
                     <div>
-                      <label className="font-semibold text-slate-700 block mb-1">Dia de Vencimento</label>
-                      <input
-                        type="number"
-                        min="1"
-                        max="31"
-                        value={novaConta.diaVencimento}
-                        onChange={(e) => setNovaConta({ ...novaConta, diaVencimento: e.target.value })}
+                      <label className="font-semibold text-slate-700 block mb-1">Tipo de Conta (OE1)</label>
+                      <select
+                        value={novaConta.tipo}
+                        onChange={(e) => setNovaConta({ ...novaConta, tipo: e.target.value })}
                         className="w-full px-3 py-2 border border-slate-300 rounded-lg"
-                      />
+                      >
+                        <option value="CORRENTE">Conta Corrente</option>
+                        <option value="POUPANCA">Conta Poupança</option>
+                        <option value="CARTAO_CREDITO">Cartão de Crédito</option>
+                        <option value="CORRETORA">Conta Corretora</option>
+                      </select>
                     </div>
                     <div>
-                      <label className="font-semibold text-slate-700 block mb-1">Limite (R$)</label>
+                      <label className="font-semibold text-slate-700 block mb-1">Saldo Inicial (R$)</label>
                       <input
                         type="number"
                         step="0.01"
-                        value={novaConta.limiteCredito}
-                        onChange={(e) => setNovaConta({ ...novaConta, limiteCredito: e.target.value })}
+                        value={novaConta.saldo}
+                        onChange={(e) => setNovaConta({ ...novaConta, saldo: e.target.value })}
                         className="w-full px-3 py-2 border border-slate-300 rounded-lg"
                       />
                     </div>
                   </div>
-                )}
-
-                <label className="flex items-center gap-2 p-2.5 rounded-lg bg-amber-50 border border-amber-200 cursor-pointer">
-                  <input
-                    type="checkbox"
-                    checked={novaConta.privada}
-                    onChange={(e) => setNovaConta({ ...novaConta, privada: e.target.checked })}
-                  />
-                  <span className="text-amber-900 font-medium">
-                    Marcar como Conta Privada (RN-001: não soma no Patrimônio Global)
-                  </span>
-                </label>
-
-                <button
-                  type="submit"
-                  className="w-full py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-lg shadow transition"
-                >
-                  Salvar Conta
-                </button>
-              </form>
-            </div>
+  
+                  {novaConta.tipo === 'CARTAO_CREDITO' && (
+                    <div className="grid grid-cols-2 gap-2">
+                      <div>
+                        <label className="font-semibold text-slate-700 block mb-1">Dia de Vencimento</label>
+                        <input
+                          type="number"
+                          min="1"
+                          max="31"
+                          value={novaConta.diaVencimento}
+                          onChange={(e) => setNovaConta({ ...novaConta, diaVencimento: e.target.value })}
+                          className="w-full px-3 py-2 border border-slate-300 rounded-lg"
+                        />
+                      </div>
+                      <div>
+                        <label className="font-semibold text-slate-700 block mb-1">Limite (R$)</label>
+                        <input
+                          type="number"
+                          step="0.01"
+                          value={novaConta.limiteCredito}
+                          onChange={(e) => setNovaConta({ ...novaConta, limiteCredito: e.target.value })}
+                          className="w-full px-3 py-2 border border-slate-300 rounded-lg"
+                        />
+                      </div>
+                    </div>
+                  )}
+  
+                  <label className="flex items-center gap-2 p-2.5 rounded-lg bg-amber-50 border border-amber-200 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={novaConta.privada}
+                      onChange={(e) => setNovaConta({ ...novaConta, privada: e.target.checked })}
+                    />
+                    <span className="text-amber-900 font-medium">
+                      Marcar como Conta Privada (RN-001: não soma no Patrimônio Global)
+                    </span>
+                  </label>
+  
+                  <button
+                    type="submit"
+                    className="w-full py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-lg shadow transition"
+                  >
+                    Salvar Conta
+                  </button>
+                </form>
+              </div>
+            ) : (
+              <CardPermissao titulo="Cadastro de contas" texto="Somente o Titular cadastra, altera e exclui contas e cartões (UC02)." />
+            )}
           </div>
         )}
 
@@ -1805,16 +1886,18 @@ export default function App() {
                           {fmtBRL(t.valor)}
                         </td>
                         <td className="p-2.5 text-center">
-                          <button
-                            onClick={async () => {
-                              await api.deleteTransacao(t.id);
-                              carregarTudo();
-                            }}
-                            className="text-slate-400 hover:text-rose-600"
-                            title="Excluir transação"
-                          >
-                            <Trash2 className="w-3.5 h-3.5 inline" />
-                          </button>
+                          {(isTitular || (podeLancar && t.autor?.id === usuario?.usuarioId)) && (
+                            <button
+                              onClick={async () => {
+                                await api.deleteTransacao(t.id);
+                                carregarTudo();
+                              }}
+                              className="text-slate-400 hover:text-rose-600"
+                              title="Excluir transação"
+                            >
+                              <Trash2 className="w-3.5 h-3.5 inline" />
+                            </button>
+                          )}
                         </td>
                       </tr>
                     ))}
@@ -1824,118 +1907,122 @@ export default function App() {
             </div>
 
             {/* Formulario de Novo Lancamento com Parcelamento Automatico (RN-003) */}
-            <div className="bg-white rounded-2xl p-5 shadow-sm border border-slate-200 h-fit">
-              <h3 className="text-sm font-bold text-slate-900 mb-3">
-                Novo Lançamento Manual / Parcelado (RF-003 & RN-003)
-              </h3>
-              <form onSubmit={handleCriarTransacao} className="space-y-3 text-xs">
-                <div>
-                  <label className="font-semibold text-slate-700 block mb-1">Descrição</label>
-                  <input
-                    type="text"
-                    required
-                    value={novaTransacao.descricao}
-                    onChange={(e) => setNovaTransacao({ ...novaTransacao, descricao: e.target.value })}
-                    placeholder="Ex: Geladeira Inox / Supermercado"
-                    className="w-full px-3 py-2 border border-slate-300 rounded-lg"
-                  />
-                </div>
-                <div className="grid grid-cols-2 gap-2">
+            {podeLancar ? (
+              <div className="bg-white rounded-2xl p-5 shadow-sm border border-slate-200 h-fit">
+                <h3 className="text-sm font-bold text-slate-900 mb-3">
+                  Novo Lançamento Manual / Parcelado (RF-003 & RN-003)
+                </h3>
+                <form onSubmit={handleCriarTransacao} className="space-y-3 text-xs">
                   <div>
-                    <label className="font-semibold text-slate-700 block mb-1">Valor Total (R$)</label>
+                    <label className="font-semibold text-slate-700 block mb-1">Descrição</label>
                     <input
-                      type="number"
-                      step="0.01"
+                      type="text"
                       required
-                      value={novaTransacao.valor}
-                      onChange={(e) => setNovaTransacao({ ...novaTransacao, valor: e.target.value })}
-                      placeholder="Ex: 1200.00"
+                      value={novaTransacao.descricao}
+                      onChange={(e) => setNovaTransacao({ ...novaTransacao, descricao: e.target.value })}
+                      placeholder="Ex: Geladeira Inox / Supermercado"
                       className="w-full px-3 py-2 border border-slate-300 rounded-lg"
                     />
                   </div>
+                  <div className="grid grid-cols-2 gap-2">
+                    <div>
+                      <label className="font-semibold text-slate-700 block mb-1">Valor Total (R$)</label>
+                      <input
+                        type="number"
+                        step="0.01"
+                        required
+                        value={novaTransacao.valor}
+                        onChange={(e) => setNovaTransacao({ ...novaTransacao, valor: e.target.value })}
+                        placeholder="Ex: 1200.00"
+                        className="w-full px-3 py-2 border border-slate-300 rounded-lg"
+                      />
+                    </div>
+                    <div>
+                      <label className="font-semibold text-slate-700 block mb-1">Tipo</label>
+                      <select
+                        value={novaTransacao.tipo}
+                        onChange={(e) => setNovaTransacao({ ...novaTransacao, tipo: e.target.value })}
+                        className="w-full px-3 py-2 border border-slate-300 rounded-lg"
+                      >
+                        <option value="DESPESA">Despesa</option>
+                        <option value="RECEITA">Receita</option>
+                        <option value="TRANSFERENCIA">Transferência</option>
+                      </select>
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-2 gap-2">
+                    <div>
+                      <label className="font-semibold text-slate-700 block mb-1">Data</label>
+                      <input
+                        type="date"
+                        value={novaTransacao.data}
+                        onChange={(e) => setNovaTransacao({ ...novaTransacao, data: e.target.value })}
+                        className="w-full px-3 py-2 border border-slate-300 rounded-lg"
+                      />
+                    </div>
+                    <div>
+                      <label className="font-semibold text-slate-700 block mb-1">Nº de Parcelas (RN-003)</label>
+                      <input
+                        type="number"
+                        min="1"
+                        max="48"
+                        value={novaTransacao.totalParcelas}
+                        onChange={(e) => setNovaTransacao({ ...novaTransacao, totalParcelas: Number(e.target.value) })}
+                        className="w-full px-3 py-2 border border-slate-300 rounded-lg"
+                      />
+                    </div>
+                  </div>
                   <div>
-                    <label className="font-semibold text-slate-700 block mb-1">Tipo</label>
+                    <label className="font-semibold text-slate-700 block mb-1">Conta / Cartão</label>
                     <select
-                      value={novaTransacao.tipo}
-                      onChange={(e) => setNovaTransacao({ ...novaTransacao, tipo: e.target.value })}
+                      value={novaTransacao.contaId}
+                      onChange={(e) => setNovaTransacao({ ...novaTransacao, contaId: Number(e.target.value) })}
                       className="w-full px-3 py-2 border border-slate-300 rounded-lg"
                     >
-                      <option value="DESPESA">Despesa</option>
-                      <option value="RECEITA">Receita</option>
-                      <option value="TRANSFERENCIA">Transferência</option>
+                      {contas.map((c) => (
+                        <option key={c.id} value={c.id}>
+                          {c.nome} ({c.tipo})
+                        </option>
+                      ))}
                     </select>
                   </div>
-                </div>
-                <div className="grid grid-cols-2 gap-2">
                   <div>
-                    <label className="font-semibold text-slate-700 block mb-1">Data</label>
-                    <input
-                      type="date"
-                      value={novaTransacao.data}
-                      onChange={(e) => setNovaTransacao({ ...novaTransacao, data: e.target.value })}
+                    <label className="font-semibold text-slate-700 block mb-1">Categoria</label>
+                    <select
+                      value={novaTransacao.categoriaId}
+                      onChange={(e) => setNovaTransacao({ ...novaTransacao, categoriaId: Number(e.target.value) })}
                       className="w-full px-3 py-2 border border-slate-300 rounded-lg"
-                    />
+                    >
+                      {categoriasPlanas.map((cat) => (
+                        <option key={cat.id} value={cat.id}>
+                          {cat.caminhoCompleto || cat.nome}
+                        </option>
+                      ))}
+                    </select>
                   </div>
-                  <div>
-                    <label className="font-semibold text-slate-700 block mb-1">Nº de Parcelas (RN-003)</label>
+  
+                  <label className="flex items-center gap-2 p-2.5 rounded-lg bg-slate-50 border border-slate-200 cursor-pointer">
                     <input
-                      type="number"
-                      min="1"
-                      max="48"
-                      value={novaTransacao.totalParcelas}
-                      onChange={(e) => setNovaTransacao({ ...novaTransacao, totalParcelas: Number(e.target.value) })}
-                      className="w-full px-3 py-2 border border-slate-300 rounded-lg"
+                      type="checkbox"
+                      checked={novaTransacao.recorrente}
+                      onChange={(e) => setNovaTransacao({ ...novaTransacao, recorrente: e.target.checked })}
                     />
-                  </div>
-                </div>
-                <div>
-                  <label className="font-semibold text-slate-700 block mb-1">Conta / Cartão</label>
-                  <select
-                    value={novaTransacao.contaId}
-                    onChange={(e) => setNovaTransacao({ ...novaTransacao, contaId: Number(e.target.value) })}
-                    className="w-full px-3 py-2 border border-slate-300 rounded-lg"
+                    <span className="text-slate-700 font-medium">
+                      Lançamento Recorrente Mensal (ex: Aluguel, Assinatura)
+                    </span>
+                  </label>
+  
+                  <button
+                    type="submit"
+                    className="w-full py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-lg shadow transition"
                   >
-                    {contas.map((c) => (
-                      <option key={c.id} value={c.id}>
-                        {c.nome} ({c.tipo})
-                      </option>
-                    ))}
-                  </select>
-                </div>
-                <div>
-                  <label className="font-semibold text-slate-700 block mb-1">Categoria</label>
-                  <select
-                    value={novaTransacao.categoriaId}
-                    onChange={(e) => setNovaTransacao({ ...novaTransacao, categoriaId: Number(e.target.value) })}
-                    className="w-full px-3 py-2 border border-slate-300 rounded-lg"
-                  >
-                    {categoriasPlanas.map((cat) => (
-                      <option key={cat.id} value={cat.id}>
-                        {cat.caminhoCompleto || cat.nome}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-
-                <label className="flex items-center gap-2 p-2.5 rounded-lg bg-slate-50 border border-slate-200 cursor-pointer">
-                  <input
-                    type="checkbox"
-                    checked={novaTransacao.recorrente}
-                    onChange={(e) => setNovaTransacao({ ...novaTransacao, recorrente: e.target.checked })}
-                  />
-                  <span className="text-slate-700 font-medium">
-                    Lançamento Recorrente Mensal (ex: Aluguel, Assinatura)
-                  </span>
-                </label>
-
-                <button
-                  type="submit"
-                  className="w-full py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-lg shadow transition"
-                >
-                  Registrar Lançamento
-                </button>
-              </form>
-            </div>
+                    Registrar Lançamento
+                  </button>
+                </form>
+              </div>
+            ) : (
+              <CardPermissao titulo="Novos lançamentos" texto="O perfil Auditor tem acesso somente de leitura aos lançamentos (Seção 2.9)." />
+            )}
           </div>
         )}
 
@@ -1953,158 +2040,162 @@ export default function App() {
               </p>
             </div>
 
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 text-xs">
-              <div className="space-y-3">
-                <div>
-                  <label className="font-semibold text-slate-700 block mb-1">1. Conta de Destino do Extrato</label>
-                  <select
-                    value={csvContaId}
-                    onChange={(e) => setCsvContaId(e.target.value)}
-                    className="w-full px-3 py-2 border border-slate-300 rounded-lg"
-                  >
-                    {contas.map((c) => (
-                      <option key={c.id} value={c.id}>
-                        {c.nome} ({c.instituicao})
-                      </option>
-                    ))}
-                  </select>
-                </div>
-
-                <div>
-                  <div className="flex items-center justify-between mb-1">
-                    <label className="font-semibold text-slate-700">
-                      2. Conteúdo do Arquivo CSV (data;descricao;valor;tipo)
-                    </label>
-                    <input
-                      type="file"
-                      accept=".csv,.txt"
-                      onChange={(e) => {
-                        const file = e.target.files?.[0];
-                        if (file) {
-                          const reader = new FileReader();
-                          reader.onload = (ev) => setCsvConteudo(String(ev.target?.result || ''));
-                          reader.readAsText(file);
-                        }
-                      }}
-                      className="text-[11px]"
+            {podeLancar ? (
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 text-xs">
+                <div className="space-y-3">
+                  <div>
+                    <label className="font-semibold text-slate-700 block mb-1">1. Conta de Destino do Extrato</label>
+                    <select
+                      value={csvContaId}
+                      onChange={(e) => setCsvContaId(e.target.value)}
+                      className="w-full px-3 py-2 border border-slate-300 rounded-lg"
+                    >
+                      {contas.map((c) => (
+                        <option key={c.id} value={c.id}>
+                          {c.nome} ({c.instituicao})
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+  
+                  <div>
+                    <div className="flex items-center justify-between mb-1">
+                      <label className="font-semibold text-slate-700">
+                        2. Conteúdo do Arquivo CSV (data;descricao;valor;tipo)
+                      </label>
+                      <input
+                        type="file"
+                        accept=".csv,.txt"
+                        onChange={(e) => {
+                          const file = e.target.files?.[0];
+                          if (file) {
+                            const reader = new FileReader();
+                            reader.onload = (ev) => setCsvConteudo(String(ev.target?.result || ''));
+                            reader.readAsText(file);
+                          }
+                        }}
+                        className="text-[11px]"
+                      />
+                    </div>
+                    <textarea
+                      rows={7}
+                      value={csvConteudo}
+                      onChange={(e) => setCsvConteudo(e.target.value)}
+                      className="w-full p-3 border border-slate-300 rounded-lg font-mono text-xs"
                     />
                   </div>
-                  <textarea
-                    rows={7}
-                    value={csvConteudo}
-                    onChange={(e) => setCsvConteudo(e.target.value)}
-                    className="w-full p-3 border border-slate-300 rounded-lg font-mono text-xs"
-                  />
-                </div>
-
-                <div className="flex gap-2">
-                  <button
-                    type="button"
-                    onClick={handleAnalisarCsv}
-                    className="px-4 py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-lg shadow"
-                  >
-                    Validar CSV e Descartar Duplicadas (Etapa 1 BPMN)
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setCsvConteudo(EXTRATO_EXEMPLO_CSV)}
-                    className="px-3 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold rounded-lg"
-                  >
-                    Restaurar Exemplo
-                  </button>
-                </div>
-              </div>
-
-              {/* Painel de Revisao de Categorias antes da Confirmacao (BPMN Figura 1) */}
-              <div className="bg-slate-50 rounded-xl p-4 border border-slate-200">
-                <h3 className="text-sm font-bold text-slate-900 mb-2">
-                  3. Revisão de Categorias e Conciliação de Duplicidades (UC05)
-                </h3>
-
-                {csvAnalise ? (
-                  <div className="space-y-3">
-                    <div className="grid grid-cols-3 gap-2 text-center">
-                      <div className="p-2 rounded-lg bg-white border border-slate-200">
-                        <div className="text-lg font-extrabold text-slate-900">{csvAnalise.totalLinhasLidas}</div>
-                        <div className="text-[10px] text-slate-500">Linhas Lidas</div>
-                      </div>
-                      <div className="p-2 rounded-lg bg-emerald-50 border border-emerald-200">
-                        <div className="text-lg font-extrabold text-emerald-700">{csvAnalise.quantidadeNovas}</div>
-                        <div className="text-[10px] text-emerald-700">Inéditas p/ Importar</div>
-                      </div>
-                      <div className="p-2 rounded-lg bg-amber-50 border border-amber-200">
-                        <div className="text-lg font-extrabold text-amber-800">
-                          {csvAnalise.quantidadeDuplicadasDescartadas}
-                        </div>
-                        <div className="text-[10px] text-amber-800">Duplicadas Descartadas (OE2)</div>
-                      </div>
-                    </div>
-
-                    {csvAnalise.transacoesParaRevisao.length > 0 && (
-                      <div className="max-h-48 overflow-y-auto bg-white rounded-lg border border-slate-200">
-                        <table className="w-full text-xs">
-                          <thead className="bg-slate-100">
-                            <tr>
-                              <th className="p-2 text-left">Data</th>
-                              <th className="p-2 text-left">Descrição</th>
-                              <th className="p-2 text-left">Categoria Sugerida</th>
-                              <th className="p-2 text-right">Valor</th>
-                            </tr>
-                          </thead>
-                          <tbody>
-                            {csvAnalise.transacoesParaRevisao.map((item, idx) => (
-                              <tr key={idx} className="border-t border-slate-100">
-                                <td className="p-2">{item.data}</td>
-                                <td className="p-2 font-medium">{item.descricao}</td>
-                                <td className="p-2">
-                                  <select
-                                    value={item.categoriaId || ''}
-                                    onChange={(e) => {
-                                      const novas = [...csvAnalise.transacoesParaRevisao];
-                                      novas[idx] = { ...novas[idx], categoriaId: Number(e.target.value) };
-                                      setCsvAnalise({ ...csvAnalise, transacoesParaRevisao: novas });
-                                    }}
-                                    className="px-2 py-1 border border-slate-300 rounded text-[11px]"
-                                  >
-                                    {categoriasPlanas.map((cat) => (
-                                      <option key={cat.id} value={cat.id}>
-                                        {cat.nome}
-                                      </option>
-                                    ))}
-                                  </select>
-                                </td>
-                                <td className="p-2 text-right font-bold">{fmtBRL(item.valor)}</td>
-                              </tr>
-                            ))}
-                          </tbody>
-                        </table>
-                      </div>
-                    )}
-
+  
+                  <div className="flex gap-2">
                     <button
                       type="button"
-                      onClick={handleConfirmarCsv}
-                      className="w-full py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-lg shadow"
+                      onClick={handleAnalisarCsv}
+                      className="px-4 py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-lg shadow"
                     >
-                      Confirmar Importação e Atualizar Orçamentos (Etapa Final BPMN)
+                      Validar CSV e Descartar Duplicadas (Etapa 1 BPMN)
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setCsvConteudo(EXTRATO_EXEMPLO_CSV)}
+                      className="px-3 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold rounded-lg"
+                    >
+                      Restaurar Exemplo
                     </button>
                   </div>
-                ) : csvUltimoResultado ? (
-                  <div className="p-4 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-900 space-y-1">
-                    <div className="font-bold text-sm">Extrato Importado com Sucesso!</div>
-                    <p>Transações Gravadas: <strong>{csvUltimoResultado.transacoesGravadas}</strong></p>
-                    <p>Duplicidades Descartadas (OE2): <strong>{csvUltimoResultado.duplicadasDescartadas}</strong></p>
-                    <p className="text-[11px] pt-1">
-                      Dica para demonstrar a Meta OE2: Clique novamente em "Validar CSV" com o mesmo arquivo para comprovar que 100% das linhas já gravadas são descartadas automaticamente!
+                </div>
+  
+                {/* Painel de Revisao de Categorias antes da Confirmacao (BPMN Figura 1) */}
+                <div className="bg-slate-50 rounded-xl p-4 border border-slate-200">
+                  <h3 className="text-sm font-bold text-slate-900 mb-2">
+                    3. Revisão de Categorias e Conciliação de Duplicidades (UC05)
+                  </h3>
+  
+                  {csvAnalise ? (
+                    <div className="space-y-3">
+                      <div className="grid grid-cols-3 gap-2 text-center">
+                        <div className="p-2 rounded-lg bg-white border border-slate-200">
+                          <div className="text-lg font-extrabold text-slate-900">{csvAnalise.totalLinhasLidas}</div>
+                          <div className="text-[10px] text-slate-500">Linhas Lidas</div>
+                        </div>
+                        <div className="p-2 rounded-lg bg-emerald-50 border border-emerald-200">
+                          <div className="text-lg font-extrabold text-emerald-700">{csvAnalise.quantidadeNovas}</div>
+                          <div className="text-[10px] text-emerald-700">Inéditas p/ Importar</div>
+                        </div>
+                        <div className="p-2 rounded-lg bg-amber-50 border border-amber-200">
+                          <div className="text-lg font-extrabold text-amber-800">
+                            {csvAnalise.quantidadeDuplicadasDescartadas}
+                          </div>
+                          <div className="text-[10px] text-amber-800">Duplicadas Descartadas (OE2)</div>
+                        </div>
+                      </div>
+  
+                      {csvAnalise.transacoesParaRevisao.length > 0 && (
+                        <div className="max-h-48 overflow-y-auto bg-white rounded-lg border border-slate-200">
+                          <table className="w-full text-xs">
+                            <thead className="bg-slate-100">
+                              <tr>
+                                <th className="p-2 text-left">Data</th>
+                                <th className="p-2 text-left">Descrição</th>
+                                <th className="p-2 text-left">Categoria Sugerida</th>
+                                <th className="p-2 text-right">Valor</th>
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {csvAnalise.transacoesParaRevisao.map((item, idx) => (
+                                <tr key={idx} className="border-t border-slate-100">
+                                  <td className="p-2">{item.data}</td>
+                                  <td className="p-2 font-medium">{item.descricao}</td>
+                                  <td className="p-2">
+                                    <select
+                                      value={item.categoriaId || ''}
+                                      onChange={(e) => {
+                                        const novas = [...csvAnalise.transacoesParaRevisao];
+                                        novas[idx] = { ...novas[idx], categoriaId: Number(e.target.value) };
+                                        setCsvAnalise({ ...csvAnalise, transacoesParaRevisao: novas });
+                                      }}
+                                      className="px-2 py-1 border border-slate-300 rounded text-[11px]"
+                                    >
+                                      {categoriasPlanas.map((cat) => (
+                                        <option key={cat.id} value={cat.id}>
+                                          {cat.nome}
+                                        </option>
+                                      ))}
+                                    </select>
+                                  </td>
+                                  <td className="p-2 text-right font-bold">{fmtBRL(item.valor)}</td>
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                        </div>
+                      )}
+  
+                      <button
+                        type="button"
+                        onClick={handleConfirmarCsv}
+                        className="w-full py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-lg shadow"
+                      >
+                        Confirmar Importação e Atualizar Orçamentos (Etapa Final BPMN)
+                      </button>
+                    </div>
+                  ) : csvUltimoResultado ? (
+                    <div className="p-4 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-900 space-y-1">
+                      <div className="font-bold text-sm">Extrato Importado com Sucesso!</div>
+                      <p>Transações Gravadas: <strong>{csvUltimoResultado.transacoesGravadas}</strong></p>
+                      <p>Duplicidades Descartadas (OE2): <strong>{csvUltimoResultado.duplicadasDescartadas}</strong></p>
+                      <p className="text-[11px] pt-1">
+                        Dica para demonstrar a Meta OE2: Clique novamente em "Validar CSV" com o mesmo arquivo para comprovar que 100% das linhas já gravadas são descartadas automaticamente!
+                      </p>
+                    </div>
+                  ) : (
+                    <p className="text-xs text-slate-500">
+                      Clique em "Validar CSV e Descartar Duplicadas" ao lado para visualizar a conciliação SHA-256 antes de gravar.
                     </p>
-                  </div>
-                ) : (
-                  <p className="text-xs text-slate-500">
-                    Clique em "Validar CSV e Descartar Duplicadas" ao lado para visualizar a conciliação SHA-256 antes de gravar.
-                  </p>
-                )}
+                  )}
+                </div>
               </div>
-            </div>
+            ) : (
+              <CardPermissao titulo="Importação restrita" texto="O perfil Auditor tem acesso somente de leitura; a importação de extratos é feita pelo Titular ou pelo Membro (UC05)." />
+            )}
           </div>
         )}
 
@@ -2180,54 +2271,58 @@ export default function App() {
               </div>
             </div>
 
-            <div className="bg-white rounded-2xl p-5 shadow-sm border border-slate-200 h-fit">
-              <h3 className="text-sm font-bold text-slate-900 mb-3">Definir / Ajustar Meta Mensal (RF-006)</h3>
-              <form onSubmit={handleSalvarOrcamento} className="space-y-3 text-xs">
-                <div>
-                  <label className="font-semibold text-slate-700 block mb-1">Categoria</label>
-                  <select
-                    value={novoOrcamento.categoriaId}
-                    onChange={(e) => setNovoOrcamento({ ...novoOrcamento, categoriaId: e.target.value })}
-                    className="w-full px-3 py-2 border border-slate-300 rounded-lg"
+            {isTitular ? (
+              <div className="bg-white rounded-2xl p-5 shadow-sm border border-slate-200 h-fit">
+                <h3 className="text-sm font-bold text-slate-900 mb-3">Definir / Ajustar Meta Mensal (RF-006)</h3>
+                <form onSubmit={handleSalvarOrcamento} className="space-y-3 text-xs">
+                  <div>
+                    <label className="font-semibold text-slate-700 block mb-1">Categoria</label>
+                    <select
+                      value={novoOrcamento.categoriaId}
+                      onChange={(e) => setNovoOrcamento({ ...novoOrcamento, categoriaId: e.target.value })}
+                      className="w-full px-3 py-2 border border-slate-300 rounded-lg"
+                    >
+                      {categoriasPlanas
+                        .filter((c) => !c.pai)
+                        .map((c) => (
+                          <option key={c.id} value={c.id}>
+                            {c.nome}
+                          </option>
+                        ))}
+                    </select>
+                  </div>
+                  <div>
+                    <label className="font-semibold text-slate-700 block mb-1">Mês (YearMonth)</label>
+                    <input
+                      type="month"
+                      value={novoOrcamento.mes}
+                      onChange={(e) => setNovoOrcamento({ ...novoOrcamento, mes: e.target.value })}
+                      className="w-full px-3 py-2 border border-slate-300 rounded-lg"
+                    />
+                  </div>
+                  <div>
+                    <label className="font-semibold text-slate-700 block mb-1">Limite Planejado (R$)</label>
+                    <input
+                      type="number"
+                      step="0.01"
+                      required
+                      value={novoOrcamento.valorPlanejado}
+                      onChange={(e) => setNovoOrcamento({ ...novoOrcamento, valorPlanejado: e.target.value })}
+                      placeholder="Ex: 1800.00"
+                      className="w-full px-3 py-2 border border-slate-300 rounded-lg"
+                    />
+                  </div>
+                  <button
+                    type="submit"
+                    className="w-full py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-lg shadow"
                   >
-                    {categoriasPlanas
-                      .filter((c) => !c.pai)
-                      .map((c) => (
-                        <option key={c.id} value={c.id}>
-                          {c.nome}
-                        </option>
-                      ))}
-                  </select>
-                </div>
-                <div>
-                  <label className="font-semibold text-slate-700 block mb-1">Mês (YearMonth)</label>
-                  <input
-                    type="month"
-                    value={novoOrcamento.mes}
-                    onChange={(e) => setNovoOrcamento({ ...novoOrcamento, mes: e.target.value })}
-                    className="w-full px-3 py-2 border border-slate-300 rounded-lg"
-                  />
-                </div>
-                <div>
-                  <label className="font-semibold text-slate-700 block mb-1">Limite Planejado (R$)</label>
-                  <input
-                    type="number"
-                    step="0.01"
-                    required
-                    value={novoOrcamento.valorPlanejado}
-                    onChange={(e) => setNovoOrcamento({ ...novoOrcamento, valorPlanejado: e.target.value })}
-                    placeholder="Ex: 1800.00"
-                    className="w-full px-3 py-2 border border-slate-300 rounded-lg"
-                  />
-                </div>
-                <button
-                  type="submit"
-                  className="w-full py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-lg shadow"
-                >
-                  Salvar Orçamento Mensal
-                </button>
-              </form>
-            </div>
+                    Salvar Orçamento Mensal
+                  </button>
+                </form>
+              </div>
+            ) : (
+              <CardPermissao titulo="Metas de orçamento" texto="Somente o Titular define as metas mensais; os demais acompanham o progresso (UC06)." />
+            )}
           </div>
         )}
 
@@ -2307,96 +2402,100 @@ export default function App() {
             </div>
 
             {/* Formulario de Operacao de Investimento e Provento (RN-005) */}
-            <div className="bg-white rounded-2xl p-5 shadow-sm border border-slate-200 h-fit">
-              <h3 className="text-sm font-bold text-slate-900 mb-1">
-                Registrar Compra, Venda ou Provento (RF-008 & RN-005)
-              </h3>
-              <p className="text-[11px] text-slate-500 mb-3">
-                RN-005: Ao lançar um PROVENTO, o sistema gera automaticamente uma Receita na conta de destino!
-              </p>
-
-              <form onSubmit={handleRegistrarInvestimento} className="space-y-3 text-xs">
-                <div className="grid grid-cols-2 gap-2">
+            {isTitular ? (
+              <div className="bg-white rounded-2xl p-5 shadow-sm border border-slate-200 h-fit">
+                <h3 className="text-sm font-bold text-slate-900 mb-1">
+                  Registrar Compra, Venda ou Provento (RF-008 & RN-005)
+                </h3>
+                <p className="text-[11px] text-slate-500 mb-3">
+                  RN-005: Ao lançar um PROVENTO, o sistema gera automaticamente uma Receita na conta de destino!
+                </p>
+  
+                <form onSubmit={handleRegistrarInvestimento} className="space-y-3 text-xs">
+                  <div className="grid grid-cols-2 gap-2">
+                    <div>
+                      <label className="font-semibold text-slate-700 block mb-1">Ticker do Ativo</label>
+                      <select
+                        value={novaOperacaoInv.ticker}
+                        onChange={(e) => setNovaOperacaoInv({ ...novaOperacaoInv, ticker: e.target.value })}
+                        className="w-full px-3 py-2 border border-slate-300 rounded-lg font-bold"
+                      >
+                        {(carteira?.ativosDisponiveis || []).map((a) => (
+                          <option key={a.ticker} value={a.ticker}>
+                            {a.ticker} — {a.nome}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                    <div>
+                      <label className="font-semibold text-slate-700 block mb-1">Tipo de Operação</label>
+                      <select
+                        value={novaOperacaoInv.tipo}
+                        onChange={(e) => setNovaOperacaoInv({ ...novaOperacaoInv, tipo: e.target.value })}
+                        className="w-full px-3 py-2 border border-slate-300 rounded-lg font-semibold"
+                      >
+                        <option value="COMPRA">COMPRA</option>
+                        <option value="VENDA">VENDA</option>
+                        <option value="PROVENTO">PROVENTO / DIVIDENDO (RN-005)</option>
+                      </select>
+                    </div>
+                  </div>
+  
+                  <div className="grid grid-cols-2 gap-2">
+                    <div>
+                      <label className="font-semibold text-slate-700 block mb-1">Quantidade / Cotas</label>
+                      <input
+                        type="number"
+                        step="0.01"
+                        required
+                        value={novaOperacaoInv.quantidade}
+                        onChange={(e) => setNovaOperacaoInv({ ...novaOperacaoInv, quantidade: e.target.value })}
+                        className="w-full px-3 py-2 border border-slate-300 rounded-lg"
+                      />
+                    </div>
+                    <div>
+                      <label className="font-semibold text-slate-700 block mb-1">
+                        {novaOperacaoInv.tipo === 'PROVENTO' ? 'Valor por Cota (R$)' : 'Preço Unitário (R$)'}
+                      </label>
+                      <input
+                        type="number"
+                        step="0.01"
+                        required
+                        value={novaOperacaoInv.preco}
+                        onChange={(e) => setNovaOperacaoInv({ ...novaOperacaoInv, preco: e.target.value })}
+                        className="w-full px-3 py-2 border border-slate-300 rounded-lg"
+                      />
+                    </div>
+                  </div>
+  
                   <div>
-                    <label className="font-semibold text-slate-700 block mb-1">Ticker do Ativo</label>
+                    <label className="font-semibold text-slate-700 block mb-1">
+                      Conta de Destino do Provento (RN-005)
+                    </label>
                     <select
-                      value={novaOperacaoInv.ticker}
-                      onChange={(e) => setNovaOperacaoInv({ ...novaOperacaoInv, ticker: e.target.value })}
-                      className="w-full px-3 py-2 border border-slate-300 rounded-lg font-bold"
+                      value={novaOperacaoInv.contaDestinoProventoId}
+                      onChange={(e) => setNovaOperacaoInv({ ...novaOperacaoInv, contaDestinoProventoId: e.target.value })}
+                      className="w-full px-3 py-2 border border-slate-300 rounded-lg"
                     >
-                      {(carteira?.ativosDisponiveis || []).map((a) => (
-                        <option key={a.ticker} value={a.ticker}>
-                          {a.ticker} — {a.nome}
+                      {contas.map((c) => (
+                        <option key={c.id} value={c.id}>
+                          {c.nome} (Saldo: {fmtBRL(c.saldo)})
                         </option>
                       ))}
                     </select>
                   </div>
-                  <div>
-                    <label className="font-semibold text-slate-700 block mb-1">Tipo de Operação</label>
-                    <select
-                      value={novaOperacaoInv.tipo}
-                      onChange={(e) => setNovaOperacaoInv({ ...novaOperacaoInv, tipo: e.target.value })}
-                      className="w-full px-3 py-2 border border-slate-300 rounded-lg font-semibold"
-                    >
-                      <option value="COMPRA">COMPRA</option>
-                      <option value="VENDA">VENDA</option>
-                      <option value="PROVENTO">PROVENTO / DIVIDENDO (RN-005)</option>
-                    </select>
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-2 gap-2">
-                  <div>
-                    <label className="font-semibold text-slate-700 block mb-1">Quantidade / Cotas</label>
-                    <input
-                      type="number"
-                      step="0.01"
-                      required
-                      value={novaOperacaoInv.quantidade}
-                      onChange={(e) => setNovaOperacaoInv({ ...novaOperacaoInv, quantidade: e.target.value })}
-                      className="w-full px-3 py-2 border border-slate-300 rounded-lg"
-                    />
-                  </div>
-                  <div>
-                    <label className="font-semibold text-slate-700 block mb-1">
-                      {novaOperacaoInv.tipo === 'PROVENTO' ? 'Valor por Cota (R$)' : 'Preço Unitário (R$)'}
-                    </label>
-                    <input
-                      type="number"
-                      step="0.01"
-                      required
-                      value={novaOperacaoInv.preco}
-                      onChange={(e) => setNovaOperacaoInv({ ...novaOperacaoInv, preco: e.target.value })}
-                      className="w-full px-3 py-2 border border-slate-300 rounded-lg"
-                    />
-                  </div>
-                </div>
-
-                <div>
-                  <label className="font-semibold text-slate-700 block mb-1">
-                    Conta de Destino do Provento (RN-005)
-                  </label>
-                  <select
-                    value={novaOperacaoInv.contaDestinoProventoId}
-                    onChange={(e) => setNovaOperacaoInv({ ...novaOperacaoInv, contaDestinoProventoId: e.target.value })}
-                    className="w-full px-3 py-2 border border-slate-300 rounded-lg"
+  
+                  <button
+                    type="submit"
+                    className="w-full py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-lg shadow transition"
                   >
-                    {contas.map((c) => (
-                      <option key={c.id} value={c.id}>
-                        {c.nome} (Saldo: {fmtBRL(c.saldo)})
-                      </option>
-                    ))}
-                  </select>
-                </div>
-
-                <button
-                  type="submit"
-                  className="w-full py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-lg shadow transition"
-                >
-                  Registrar Operação na Carteira
-                </button>
-              </form>
-            </div>
+                    Registrar Operação na Carteira
+                  </button>
+                </form>
+              </div>
+            ) : (
+              <CardPermissao titulo="Registro de investimentos" texto="Somente o Titular registra compras, vendas e proventos (UC08)." />
+            )}
           </div>
         )}
 
@@ -2453,81 +2552,87 @@ export default function App() {
             </div>
 
             <div className="space-y-4">
-              <div className="bg-white rounded-2xl p-5 shadow-sm border border-slate-200">
-                <h3 className="text-sm font-bold text-slate-900 mb-3">Nova Categoria / Subcategoria</h3>
-                <form
-                  onSubmit={async (e) => {
-                    e.preventDefault();
-                    await api.createCategoria({ ...novaCategoria, grupoId: 1 });
-                    setNovaCategoria({ nome: '', cor: '#3B82F6', tipoPadrao: 'DESPESA', paiId: '' });
-                    exibirMensagem('sucesso', 'Categoria adicionada à árvore hierárquica (RF-004)!');
-                    carregarTudo();
-                  }}
-                  className="space-y-3 text-xs"
-                >
-                  <div>
-                    <label className="font-semibold text-slate-700 block mb-1">Nome</label>
+              {isTitular ? (
+                <div className="bg-white rounded-2xl p-5 shadow-sm border border-slate-200">
+                  <h3 className="text-sm font-bold text-slate-900 mb-3">Nova Categoria / Subcategoria</h3>
+                  <form
+                    onSubmit={async (e) => {
+                      e.preventDefault();
+                      await api.createCategoria({ ...novaCategoria, grupoId: 1 });
+                      setNovaCategoria({ nome: '', cor: '#3B82F6', tipoPadrao: 'DESPESA', paiId: '' });
+                      exibirMensagem('sucesso', 'Categoria adicionada à árvore hierárquica (RF-004)!');
+                      carregarTudo();
+                    }}
+                    className="space-y-3 text-xs"
+                  >
+                    <div>
+                      <label className="font-semibold text-slate-700 block mb-1">Nome</label>
+                      <input
+                        type="text"
+                        required
+                        value={novaCategoria.nome}
+                        onChange={(e) => setNovaCategoria({ ...novaCategoria, nome: e.target.value })}
+                        placeholder="Ex: Feira Livre"
+                        className="w-full px-3 py-2 border border-slate-300 rounded-lg"
+                      />
+                    </div>
+                    <div>
+                      <label className="font-semibold text-slate-700 block mb-1">Categoria Pai (Opcional)</label>
+                      <select
+                        value={novaCategoria.paiId}
+                        onChange={(e) => setNovaCategoria({ ...novaCategoria, paiId: e.target.value })}
+                        className="w-full px-3 py-2 border border-slate-300 rounded-lg"
+                      >
+                        <option value="">Raiz (Categoria Principal)</option>
+                        {categoriasArvore.map((r) => (
+                          <option key={r.id} value={r.id}>
+                            {r.nome}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                    <button
+                      type="submit"
+                      className="w-full py-2 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-lg"
+                    >
+                      Criar Categoria
+                    </button>
+                  </form>
+                </div>
+              ) : (
+                <CardPermissao titulo="Categorias e tags" texto="Somente o Titular cria e remove categorias e tags do grupo (UC04)." />
+              )}
+
+              {isTitular && (
+                <div className="bg-white rounded-2xl p-5 shadow-sm border border-slate-200">
+                  <h3 className="text-sm font-bold text-slate-900 mb-3">Criar Nova Tag (RF-004)</h3>
+                  <form
+                    onSubmit={async (e) => {
+                      e.preventDefault();
+                      await api.createTag({ ...novaTag, grupoId: 1 });
+                      setNovaTag({ nome: '', cor: '#6366F1' });
+                      exibirMensagem('sucesso', 'Tag criada com sucesso!');
+                      carregarTudo();
+                    }}
+                    className="space-y-3 text-xs"
+                  >
                     <input
                       type="text"
                       required
-                      value={novaCategoria.nome}
-                      onChange={(e) => setNovaCategoria({ ...novaCategoria, nome: e.target.value })}
-                      placeholder="Ex: Feira Livre"
+                      value={novaTag.nome}
+                      onChange={(e) => setNovaTag({ ...novaTag, nome: e.target.value })}
+                      placeholder="Nome da Tag (ex: Viagem Ferias)"
                       className="w-full px-3 py-2 border border-slate-300 rounded-lg"
                     />
-                  </div>
-                  <div>
-                    <label className="font-semibold text-slate-700 block mb-1">Categoria Pai (Opcional)</label>
-                    <select
-                      value={novaCategoria.paiId}
-                      onChange={(e) => setNovaCategoria({ ...novaCategoria, paiId: e.target.value })}
-                      className="w-full px-3 py-2 border border-slate-300 rounded-lg"
+                    <button
+                      type="submit"
+                      className="w-full py-2 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-lg"
                     >
-                      <option value="">Raiz (Categoria Principal)</option>
-                      {categoriasArvore.map((r) => (
-                        <option key={r.id} value={r.id}>
-                          {r.nome}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-                  <button
-                    type="submit"
-                    className="w-full py-2 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-lg"
-                  >
-                    Criar Categoria
-                  </button>
-                </form>
-              </div>
-
-              <div className="bg-white rounded-2xl p-5 shadow-sm border border-slate-200">
-                <h3 className="text-sm font-bold text-slate-900 mb-3">Criar Nova Tag (RF-004)</h3>
-                <form
-                  onSubmit={async (e) => {
-                    e.preventDefault();
-                    await api.createTag({ ...novaTag, grupoId: 1 });
-                    setNovaTag({ nome: '', cor: '#6366F1' });
-                    exibirMensagem('sucesso', 'Tag criada com sucesso!');
-                    carregarTudo();
-                  }}
-                  className="space-y-3 text-xs"
-                >
-                  <input
-                    type="text"
-                    required
-                    value={novaTag.nome}
-                    onChange={(e) => setNovaTag({ ...novaTag, nome: e.target.value })}
-                    placeholder="Nome da Tag (ex: Viagem Ferias)"
-                    className="w-full px-3 py-2 border border-slate-300 rounded-lg"
-                  />
-                  <button
-                    type="submit"
-                    className="w-full py-2 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-lg"
-                  >
-                    Salvar Tag
-                  </button>
-                </form>
-              </div>
+                      Salvar Tag
+                    </button>
+                  </form>
+                </div>
+              )}
             </div>
           </div>
         )}
@@ -2573,7 +2678,7 @@ export default function App() {
                     </div>
 
                     <div className="flex items-center gap-2 text-xs">
-                      {m.status === 'CONVIDADO' && (
+                      {m.status === 'CONVIDADO' && m.emailConvidado?.toLowerCase() === usuario?.email?.toLowerCase() && (
                         <>
                           <button
                             onClick={async () => {
@@ -2598,7 +2703,7 @@ export default function App() {
                         </>
                       )}
 
-                      {m.papel !== 'TITULAR' && m.status === 'ATIVO' && (
+                      {isTitular && m.papel !== 'TITULAR' && m.status === 'ATIVO' && (
                         <button
                           onClick={async () => {
                             await api.alterarStatusMembro(m.id, { status: 'SUSPENSO' });
@@ -2611,7 +2716,7 @@ export default function App() {
                         </button>
                       )}
 
-                      {m.status === 'SUSPENSO' && (
+                      {isTitular && m.status === 'SUSPENSO' && (
                         <button
                           onClick={async () => {
                             await api.alterarStatusMembro(m.id, { status: 'ATIVO' });
@@ -2629,51 +2734,55 @@ export default function App() {
               </div>
             </div>
 
-            <div className="bg-white rounded-2xl p-5 shadow-sm border border-slate-200 h-fit">
-              <h3 className="text-sm font-bold text-slate-900 mb-3">Convidar Novo Membro (RF-007)</h3>
-              <form onSubmit={handleConvidarMembro} className="space-y-3 text-xs">
-                <div>
-                  <label className="font-semibold text-slate-700 block mb-1">Nome do Convidado</label>
-                  <input
-                    type="text"
-                    required
-                    value={novoMembro.nome}
-                    onChange={(e) => setNovoMembro({ ...novoMembro, nome: e.target.value })}
-                    placeholder="Ex: Maria Oliveira"
-                    className="w-full px-3 py-2 border border-slate-300 rounded-lg"
-                  />
-                </div>
-                <div>
-                  <label className="font-semibold text-slate-700 block mb-1">E-mail</label>
-                  <input
-                    type="email"
-                    required
-                    value={novoMembro.email}
-                    onChange={(e) => setNovoMembro({ ...novoMembro, email: e.target.value })}
-                    placeholder="maria@ucsal.edu.br"
-                    className="w-full px-3 py-2 border border-slate-300 rounded-lg"
-                  />
-                </div>
-                <div>
-                  <label className="font-semibold text-slate-700 block mb-1">Papel / Permissão (OE4)</label>
-                  <select
-                    value={novoMembro.papel}
-                    onChange={(e) => setNovoMembro({ ...novoMembro, papel: e.target.value })}
-                    className="w-full px-3 py-2 border border-slate-300 rounded-lg"
+            {isTitular ? (
+              <div className="bg-white rounded-2xl p-5 shadow-sm border border-slate-200 h-fit">
+                <h3 className="text-sm font-bold text-slate-900 mb-3">Convidar Novo Membro (RF-007)</h3>
+                <form onSubmit={handleConvidarMembro} className="space-y-3 text-xs">
+                  <div>
+                    <label className="font-semibold text-slate-700 block mb-1">Nome do Convidado</label>
+                    <input
+                      type="text"
+                      required
+                      value={novoMembro.nome}
+                      onChange={(e) => setNovoMembro({ ...novoMembro, nome: e.target.value })}
+                      placeholder="Ex: Maria Oliveira"
+                      className="w-full px-3 py-2 border border-slate-300 rounded-lg"
+                    />
+                  </div>
+                  <div>
+                    <label className="font-semibold text-slate-700 block mb-1">E-mail</label>
+                    <input
+                      type="email"
+                      required
+                      value={novoMembro.email}
+                      onChange={(e) => setNovoMembro({ ...novoMembro, email: e.target.value })}
+                      placeholder="maria@ucsal.edu.br"
+                      className="w-full px-3 py-2 border border-slate-300 rounded-lg"
+                    />
+                  </div>
+                  <div>
+                    <label className="font-semibold text-slate-700 block mb-1">Papel / Permissão (OE4)</label>
+                    <select
+                      value={novoMembro.papel}
+                      onChange={(e) => setNovoMembro({ ...novoMembro, papel: e.target.value })}
+                      className="w-full px-3 py-2 border border-slate-300 rounded-lg"
+                    >
+                      <option value="MEMBRO">Membro Familiar (Dependente)</option>
+                      <option value="AUDITOR">Auditor / Consultor (Somente Leitura)</option>
+                      <option value="TITULAR">Co-Titular (Administrador Familiar)</option>
+                    </select>
+                  </div>
+                  <button
+                    type="submit"
+                    className="w-full py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-lg shadow"
                   >
-                    <option value="MEMBRO">Membro Familiar (Dependente)</option>
-                    <option value="AUDITOR">Auditor / Consultor (Somente Leitura)</option>
-                    <option value="TITULAR">Co-Titular (Administrador Familiar)</option>
-                  </select>
-                </div>
-                <button
-                  type="submit"
-                  className="w-full py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-lg shadow"
-                >
-                  Enviar Convite Familiar
-                </button>
-              </form>
-            </div>
+                    Enviar Convite Familiar
+                  </button>
+                </form>
+              </div>
+            ) : (
+              <CardPermissao titulo="Gestão do grupo" texto="Somente o Titular convida, suspende e reativa membros (RF-007)." />
+            )}
           </div>
         )}
 
@@ -2691,58 +2800,62 @@ export default function App() {
               </p>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <button
-                type="button"
-                onClick={() => baixarExportacao('pdf')}
-                className="p-5 rounded-2xl bg-rose-50 hover:bg-rose-100/80 border border-rose-200 flex items-center justify-between transition text-left w-full"
-              >
-                <div>
-                  <span className="text-[10px] font-bold uppercase px-2 py-0.5 rounded bg-rose-200 text-rose-900">
-                    Documento PDF (OpenPDF)
-                  </span>
-                  <h3 className="text-sm font-bold text-slate-900 mt-2">Exportar Relatório em PDF</h3>
-                  <p className="text-xs text-slate-600 mt-1">
-                    Inclui Patrimônio Consolidado (RN-001), Contas, Orçamentos e Extrato.
-                  </p>
-                </div>
-                <FileText className="w-8 h-8 text-rose-600 shrink-0" />
-              </button>
-
-              <button
-                type="button"
-                onClick={() => baixarExportacao('excel')}
-                className="p-5 rounded-2xl bg-emerald-50 hover:bg-emerald-100/80 border border-emerald-200 flex items-center justify-between transition text-left w-full"
-              >
-                <div>
-                  <span className="text-[10px] font-bold uppercase px-2 py-0.5 rounded bg-emerald-200 text-emerald-900">
-                    Planilha Excel .XLSX (Apache POI)
-                  </span>
-                  <h3 className="text-sm font-bold text-slate-900 mt-2">Exportar Planilha Excel</h3>
-                  <p className="text-xs text-slate-600 mt-1">
-                    4 abas estruturadas: Resumo, Contas, Transações e Orçamentos.
-                  </p>
-                </div>
-                <FileSpreadsheet className="w-8 h-8 text-emerald-600 shrink-0" />
-              </button>
-
-              <button
-                type="button"
-                onClick={() => baixarExportacao('csv')}
-                className="p-5 rounded-2xl bg-blue-50 hover:bg-blue-100/80 border border-blue-200 flex items-center justify-between transition text-left w-full"
-              >
-                <div>
-                  <span className="text-[10px] font-bold uppercase px-2 py-0.5 rounded bg-blue-200 text-blue-900">
-                    Arquivo CSV (UTF-8 BOM)
-                  </span>
-                  <h3 className="text-sm font-bold text-slate-900 mt-2">Exportar Extrato CSV</h3>
-                  <p className="text-xs text-slate-600 mt-1">
-                    Formato universal compatível com bancos, contabilidade e reimportação.
-                  </p>
-                </div>
-                <Download className="w-8 h-8 text-blue-600 shrink-0" />
-              </button>
-            </div>
+            {podeLancar ? (
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <button
+                  type="button"
+                  onClick={() => baixarExportacao('pdf')}
+                  className="p-5 rounded-2xl bg-rose-50 hover:bg-rose-100/80 border border-rose-200 flex items-center justify-between transition text-left w-full"
+                >
+                  <div>
+                    <span className="text-[10px] font-bold uppercase px-2 py-0.5 rounded bg-rose-200 text-rose-900">
+                      Documento PDF (OpenPDF)
+                    </span>
+                    <h3 className="text-sm font-bold text-slate-900 mt-2">Exportar Relatório em PDF</h3>
+                    <p className="text-xs text-slate-600 mt-1">
+                      Inclui Patrimônio Consolidado (RN-001), Contas, Orçamentos e Extrato.
+                    </p>
+                  </div>
+                  <FileText className="w-8 h-8 text-rose-600 shrink-0" />
+                </button>
+  
+                <button
+                  type="button"
+                  onClick={() => baixarExportacao('excel')}
+                  className="p-5 rounded-2xl bg-emerald-50 hover:bg-emerald-100/80 border border-emerald-200 flex items-center justify-between transition text-left w-full"
+                >
+                  <div>
+                    <span className="text-[10px] font-bold uppercase px-2 py-0.5 rounded bg-emerald-200 text-emerald-900">
+                      Planilha Excel .XLSX (Apache POI)
+                    </span>
+                    <h3 className="text-sm font-bold text-slate-900 mt-2">Exportar Planilha Excel</h3>
+                    <p className="text-xs text-slate-600 mt-1">
+                      4 abas estruturadas: Resumo, Contas, Transações e Orçamentos.
+                    </p>
+                  </div>
+                  <FileSpreadsheet className="w-8 h-8 text-emerald-600 shrink-0" />
+                </button>
+  
+                <button
+                  type="button"
+                  onClick={() => baixarExportacao('csv')}
+                  className="p-5 rounded-2xl bg-blue-50 hover:bg-blue-100/80 border border-blue-200 flex items-center justify-between transition text-left w-full"
+                >
+                  <div>
+                    <span className="text-[10px] font-bold uppercase px-2 py-0.5 rounded bg-blue-200 text-blue-900">
+                      Arquivo CSV (UTF-8 BOM)
+                    </span>
+                    <h3 className="text-sm font-bold text-slate-900 mt-2">Exportar Extrato CSV</h3>
+                    <p className="text-xs text-slate-600 mt-1">
+                      Formato universal compatível com bancos, contabilidade e reimportação.
+                    </p>
+                  </div>
+                  <Download className="w-8 h-8 text-blue-600 shrink-0" />
+                </button>
+              </div>
+            ) : (
+              <CardPermissao titulo="Exportação restrita" texto="O perfil Auditor visualiza os painéis, mas a exportação de dados é exclusiva do Titular e do Membro (UC10)." />
+            )}
           </div>
         )}
 
@@ -2761,25 +2874,29 @@ export default function App() {
                 </p>
               </div>
               <div className="flex gap-2">
-                <button
-                  onClick={async () => {
-                    await api.verificarVencimentos();
-                    exibirMensagem('sucesso', 'Tarefa agendada de verificação de vencimentos executada!');
-                    carregarTudo();
-                  }}
-                  className="px-3 py-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-xs font-semibold text-slate-700"
-                >
-                  Disparar Verificação de Vencimentos (@Scheduled)
-                </button>
-                <button
-                  onClick={async () => {
-                    await api.marcarTodasLidas(1);
-                    carregarTudo();
-                  }}
-                  className="px-3 py-1.5 rounded-lg bg-blue-600 text-white text-xs font-semibold"
-                >
-                  Marcar Todas como Lidas
-                </button>
+                {isTitular && (
+                  <button
+                    onClick={async () => {
+                      await api.verificarVencimentos();
+                      exibirMensagem('sucesso', 'Tarefa agendada de verificação de vencimentos executada!');
+                      carregarTudo();
+                    }}
+                    className="px-3 py-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-xs font-semibold text-slate-700"
+                  >
+                    Disparar Verificação de Vencimentos (@Scheduled)
+                  </button>
+                )}
+                {podeLancar && (
+                  <button
+                    onClick={async () => {
+                      await api.marcarTodasLidas(1);
+                      carregarTudo();
+                    }}
+                    className="px-3 py-1.5 rounded-lg bg-blue-600 text-white text-xs font-semibold"
+                  >
+                    Marcar Todas como Lidas
+                  </button>
+                )}
               </div>
             </div>
 
@@ -2800,7 +2917,7 @@ export default function App() {
                     </div>
                     <p className="text-xs text-slate-700">{n.mensagem}</p>
                   </div>
-                  {!n.lida && (
+                  {!n.lida && podeLancar && (
                     <button
                       onClick={async () => {
                         await api.marcarNotificacaoLida(n.id);
@@ -2856,91 +2973,95 @@ export default function App() {
               </div>
 
               {/* Bloco Backup Diario (RNF-007) */}
-              <div className="bg-white rounded-2xl p-5 shadow-sm border border-slate-200 space-y-3">
-                <div className="flex items-center gap-2">
-                  <Database className="w-5 h-5 text-emerald-600" />
-                  <h2 className="text-sm font-bold text-slate-900">
-                    Rotina de Backup Diário e Disaster Recovery (RNF-007)
-                  </h2>
-                </div>
-                <p className="text-xs text-slate-600">
-                  Backups automáticos diários com retenção mínima de 30 dias. Dados sensíveis armazenados com criptografia AES-256-GCM (RNF-003).
-                </p>
-
-                <button
-                  onClick={async () => {
-                    const res = await api.executarBackupDiario();
-                    setUltimoBackup(res);
-                    exibirMensagem('sucesso', `Backup RNF-007 gerado: ${res.arquivoGerado} (Retenção: ${res.politicaRetencaoDias} dias)`);
-                    carregarTudo();
-                  }}
-                  className="px-4 py-2 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold"
-                >
-                  Executar Backup Agora (Retenção 30 Dias)
-                </button>
-
-                {ultimoBackup && (
-                  <div className="p-3 rounded-lg bg-emerald-50 border border-emerald-200 text-xs text-emerald-900">
-                    <div><strong>Arquivo:</strong> {ultimoBackup.arquivoGerado}</div>
-                    <div><strong>Retenção:</strong> {ultimoBackup.politicaRetencaoDias} dias</div>
-                    <div><strong>Backups Ativos:</strong> {ultimoBackup.backupsAtivosNoServidor?.length || 1}</div>
+              {isSysadmin && (
+                <div className="bg-white rounded-2xl p-5 shadow-sm border border-slate-200 space-y-3">
+                  <div className="flex items-center gap-2">
+                    <Database className="w-5 h-5 text-emerald-600" />
+                    <h2 className="text-sm font-bold text-slate-900">
+                      Rotina de Backup Diário e Disaster Recovery (RNF-007)
+                    </h2>
                   </div>
-                )}
-              </div>
+                  <p className="text-xs text-slate-600">
+                    Backups automáticos diários com retenção mínima de 30 dias. Dados sensíveis armazenados com criptografia AES-256-GCM (RNF-003).
+                  </p>
+  
+                  <button
+                    onClick={async () => {
+                      const res = await api.executarBackupDiario();
+                      setUltimoBackup(res);
+                      exibirMensagem('sucesso', `Backup RNF-007 gerado: ${res.arquivoGerado} (Retenção: ${res.politicaRetencaoDias} dias)`);
+                      carregarTudo();
+                    }}
+                    className="px-4 py-2 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold"
+                  >
+                    Executar Backup Agora (Retenção 30 Dias)
+                  </button>
+  
+                  {ultimoBackup && (
+                    <div className="p-3 rounded-lg bg-emerald-50 border border-emerald-200 text-xs text-emerald-900">
+                      <div><strong>Arquivo:</strong> {ultimoBackup.arquivoGerado}</div>
+                      <div><strong>Retenção:</strong> {ultimoBackup.politicaRetencaoDias} dias</div>
+                      <div><strong>Backups Ativos:</strong> {ultimoBackup.backupsAtivosNoServidor?.length || 1}</div>
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
 
             {/* Bloco Sysadmin Logs (UC13) */}
-            <div className="bg-white rounded-2xl p-5 shadow-sm border border-slate-200">
-              <div className="flex items-center justify-between mb-3">
-                <div>
-                  <h3 className="text-sm font-bold text-slate-900">
-                    Trilha de Auditoria e Logs Técnicos de Segurança — Perfil Sysadmin (UC13 & RNF-003)
-                  </h3>
-                  <p className="text-xs text-slate-500">
-                    Exibe eventos técnicos e de segurança sem expor saldos ou transações descriptografadas dos membros.
-                  </p>
+            {isSysadmin && (
+              <div className="bg-white rounded-2xl p-5 shadow-sm border border-slate-200">
+                <div className="flex items-center justify-between mb-3">
+                  <div>
+                    <h3 className="text-sm font-bold text-slate-900">
+                      Trilha de Auditoria e Logs Técnicos de Segurança — Perfil Sysadmin (UC13 & RNF-003)
+                    </h3>
+                    <p className="text-xs text-slate-500">
+                      Exibe eventos técnicos e de segurança sem expor saldos ou transações descriptografadas dos membros.
+                    </p>
+                  </div>
+                </div>
+  
+                <div className="max-h-64 overflow-y-auto border border-slate-200 rounded-lg">
+                  <table className="w-full text-xs">
+                    <thead className="bg-slate-100 text-slate-700 sticky top-0">
+                      <tr>
+                        <th className="p-2 text-left">Data/Hora</th>
+                        <th className="p-2 text-left">Nível</th>
+                        <th className="p-2 text-left">Módulo</th>
+                        <th className="p-2 text-left">Ação</th>
+                        <th className="p-2 text-left">Usuário Mascarado</th>
+                        <th className="p-2 text-left">Detalhes Técnicos</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {logsSysadmin.map((log) => (
+                        <tr key={log.id} className="border-t border-slate-100 font-mono text-[11px]">
+                          <td className="p-2 whitespace-nowrap">{String(log.dataHora).slice(0, 19).replace('T', ' ')}</td>
+                          <td className="p-2">
+                            <span
+                              className={`px-1.5 py-0.5 rounded font-bold text-[10px] ${
+                                log.nivel === 'SECURITY'
+                                  ? 'bg-purple-100 text-purple-800'
+                                  : log.nivel === 'WARN'
+                                  ? 'bg-amber-100 text-amber-800'
+                                  : 'bg-blue-100 text-blue-800'
+                              }`}
+                            >
+                              {log.nivel}
+                            </span>
+                          </td>
+                          <td className="p-2">{log.modulo}</td>
+                          <td className="p-2 font-bold">{log.acao}</td>
+                          <td className="p-2">{log.usuarioMascarado}</td>
+                          <td className="p-2 font-sans text-slate-600">{log.detalhesTecnicos}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
                 </div>
               </div>
-
-              <div className="max-h-64 overflow-y-auto border border-slate-200 rounded-lg">
-                <table className="w-full text-xs">
-                  <thead className="bg-slate-100 text-slate-700 sticky top-0">
-                    <tr>
-                      <th className="p-2 text-left">Data/Hora</th>
-                      <th className="p-2 text-left">Nível</th>
-                      <th className="p-2 text-left">Módulo</th>
-                      <th className="p-2 text-left">Ação</th>
-                      <th className="p-2 text-left">Usuário Mascarado</th>
-                      <th className="p-2 text-left">Detalhes Técnicos</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {logsSysadmin.map((log) => (
-                      <tr key={log.id} className="border-t border-slate-100 font-mono text-[11px]">
-                        <td className="p-2 whitespace-nowrap">{String(log.dataHora).slice(0, 19).replace('T', ' ')}</td>
-                        <td className="p-2">
-                          <span
-                            className={`px-1.5 py-0.5 rounded font-bold text-[10px] ${
-                              log.nivel === 'SECURITY'
-                                ? 'bg-purple-100 text-purple-800'
-                                : log.nivel === 'WARN'
-                                ? 'bg-amber-100 text-amber-800'
-                                : 'bg-blue-100 text-blue-800'
-                            }`}
-                          >
-                            {log.nivel}
-                          </span>
-                        </td>
-                        <td className="p-2">{log.modulo}</td>
-                        <td className="p-2 font-bold">{log.acao}</td>
-                        <td className="p-2">{log.usuarioMascarado}</td>
-                        <td className="p-2 font-sans text-slate-600">{log.detalhesTecnicos}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </div>
+            )}
           </div>
         )}
       </main>
