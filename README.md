@@ -17,7 +17,7 @@ Este repositório contém a implementação completa de ponta a ponta (Full-Stac
 |---|---|---|
 | **Item 11** | Repositório Versionado (Git / GitHub) | `https://github.com/d3vPadawann/proj_topicos_avancados.git` (`backend/`, `frontend/`, `docs/`, `overleaf/` e `scripts/`) |
 | **Item 12** | Modelo C4 Completo (4 Níveis) | `docs/c4/c4_nivel1_contexto.png` a `c4_nivel4_codigo.png` |
-| **Item 13** | Telas do Front-End em Execução | Código em `frontend/` e 10 capturas reais em `docs/telas_frontend/` |
+| **Item 13** | Telas do Front-End em Execução | Código em `frontend/` e 13 capturas reais em `docs/telas_frontend/` (incluindo o acesso por perfil e a tela de convite) |
 | **Item 14** | Código do Servidor Back-End | Código Java 21 + Spring Boot 3.3.5 em `backend/src/main/java/br/ucsal/finfamily/` e testes em `backend/src/test/` |
 | **Item 15** | Roteiro do Vídeo Individual e Guia de Defesa (20 min) | `docs/ROTEIRO_VIDEO_E_GUIA_APRESENTACAO.md` |
 | **Artigo / PDF** | Documento Acadêmico da Unidade II + Pacote Overleaf | `TopicosAvancadosDocUnidade2.pdf`, `FinFamily_Unidade2_Overleaf.zip` e `overleaf/main.tex` |

@@ -70,7 +70,7 @@
     {\large Novembro 2026}\\[0.8cm]
 
     \begin{abstract}
-    \noindent Este documento apresenta a implementação completa da Unidade II do sistema \textbf{FinFamily}, desenvolvida na disciplina de Tópicos Avançados em Programação da Universidade Católica do Salvador (UCSAL). Em conformidade com o Roteiro do Trabalho Semestral e com a especificação de requisitos, BPMN e UML da Unidade I, o sistema foi construído em arquitetura de três camadas utilizando \textbf{Java 21 LTS} e \textbf{Spring Boot 3.3.5} no Back-End, \textbf{React 18}, \textbf{Vite} e \textbf{TailwindCSS} no Front-End e banco de dados relacional \textbf{H2 Database / PostgreSQL}. São documentados: o repositório versionado (Item 11), a arquitetura em quatro níveis do \textbf{Modelo C4} — Contexto, Contêineres, Componentes e Código (Item 12), as telas reais do Front-End em execução (Item 13), a estrutura e o código-fonte do servidor Back-End (Item 14), a validação automatizada dos doze requisitos funcionais (RF-001 a RF-012), das seis regras de negócio (RN-001 a RN-006), dos sete requisitos não funcionais (RNF-001 a RNF-007) e da bateria de 50 comandos de teste do Assistente Conversacional com Inteligência Artificial (atingindo 100\% de precisão e latência média inferior a 10ms).
+    \noindent Este documento apresenta a implementação completa da Unidade II do sistema \textbf{FinFamily}, desenvolvida na disciplina de Tópicos Avançados em Programação da Universidade Católica do Salvador (UCSAL). Em conformidade com o Roteiro do Trabalho Semestral e com a especificação de requisitos, BPMN e UML da Unidade I, o sistema foi construído em arquitetura de três camadas utilizando \textbf{Java 21 LTS} e \textbf{Spring Boot 3.3.5} no Back-End, \textbf{React 18}, \textbf{Vite} e \textbf{TailwindCSS} no Front-End e banco de dados relacional \textbf{H2 Database / PostgreSQL}. São documentados: o repositório versionado (Item 11), a arquitetura em quatro níveis do \textbf{Modelo C4} — Contexto, Contêineres, Componentes e Código (Item 12), as telas reais do Front-End em execução (Item 13), a estrutura e o código-fonte do servidor Back-End (Item 14), a validação automatizada dos doze requisitos funcionais (RF-001 a RF-012), das seis regras de negócio (RN-001 a RN-006), dos sete requisitos não funcionais (RNF-001 a RNF-007) da bateria de 50 comandos de teste do Assistente Conversacional com Inteligência Artificial, integrado a um modelo de linguagem (Google Gemini ou Ollama local) com motor local de contingência, e do controle de acesso por perfil, comprovados por 33 testes automatizados.
     \end{abstract}
 
     \vspace{0.3cm}
@@ -86,7 +86,7 @@ Na Unidade II, a equipe realizou a construção, integração e validação de p
     \item \textbf{Item 11 — Repositório Versionado:} Estrutura modular versionada em Git contendo o servidor Back-End (\texttt{backend/}), a aplicação Front-End (\texttt{frontend/}), a suíte de testes automatizados JUnit 5, os diagramas arquiteturais (\texttt{docs/c4/}) e este documento em LaTeX (\texttt{overleaf/}).
     \item \textbf{Item 12 — Modelo C4:} Representação arquitetural nos quatro níveis de abstração de Simon Brown (Contexto, Contêineres, Componentes e Código).
     \item \textbf{Item 13 — Telas do Front-End:} Capturas de tela reais da interface web responsiva construída em React + TailwindCSS integrada ao servidor Spring Boot.
-    \item \textbf{Item 14 — Código do Back-End:} Implementação em Java 21 + Spring Boot 3.3.5 cobrindo todas as entidades, regras de negócio, segurança JWT/BCrypt/AES-256, motor de conciliação CSV, exportação PDF/Excel/CSV e o Assistente Conversacional com IA.
+    \item \textbf{Item 14 — Código do Back-End:} Implementação em Java 21 + Spring Boot 3.3.5 cobrindo todas as entidades, regras de negócio, segurança JWT/BCrypt/AES-256 com controle de acesso por perfil e por grupo familiar, motor de conciliação CSV, exportação PDF/Excel/CSV e o Assistente Conversacional com IA.
     \item \textbf{Item 15 — Vídeo Explicativo:} Roteiro técnico estruturado para a demonstração individual e apresentação semestral da equipe.
 \end{enumerate}
 
@@ -99,6 +99,7 @@ O repositório Git oficial do projeto encontra-se hospedado e versionado no GitH
     \item \texttt{frontend/}: Single-Page Application (SPA) em \textbf{React 18.3}, \textbf{Vite 5.4}, \textbf{TailwindCSS 3.4} e \textbf{Lucide Icons}, com suporte nativo à \textit{Web Speech API} para comandos de voz no navegador.
     \item \texttt{docs/c4/} e \texttt{docs/telas\_frontend/}: Artefatos visuais do Modelo C4 e capturas de tela em alta resolução das telas do sistema.
     \item \texttt{overleaf/}: Código-fonte LaTeX e figuras para compilação no Overleaf.
+    \item \texttt{INICIAR\_FINFAMILY.bat} e \texttt{backend/mvnw.cmd}: inicialização em um clique em qualquer computador com JDK 21, sem exigir a instalação do Maven (Maven Wrapper).
 \end{itemize}
 
 \begin{table}[H]
@@ -112,8 +113,8 @@ O repositório Git oficial do projeto encontra-se hospedado e versionado no GitH
 Back-End / API REST & Java 21 LTS + Spring Boot 3.3.5 & Regra obrigatória do Roteiro; RF-001 a RF-012 \\
 Front-End Web & React 18 + Vite + TailwindCSS & Regra obrigatória do Roteiro; RNF-005 (Mobile-First) \\
 Persistência Relacional & Spring Data JPA + H2 / PostgreSQL & Seção 2.5 do artigo da Unidade I \\
-Segurança e Criptografia & Spring Security + BCrypt + JWT + AES-256-GCM & RF-001, OE4, RNF-003 e RNF-004 (LGPD) \\
-Serviço de IA (RF-012) & Arquitetura Híbrida (API HTTP Gemini/Ollama + Motor NLP Nativo) & RF-012, RN-006, RNF-004 e Meta OE5 ($\ge 80\%$ em 50 comandos e $< 3\text{s}$) \\
+Segurança e Criptografia & Spring Security + BCrypt + JWT + AES-256-GCM, com regras de acesso por perfil e por grupo & RF-001, OE4, RNF-003 e RNF-004 (LGPD) \\
+Serviço de IA (RF-012) & Modelo de linguagem via HTTP (Google Gemini ou Ollama local) + motor local de contingência (Seção 11.3) & RF-012, RN-006, RNF-004 e Meta OE5 ($\ge 80\%$ em 50 comandos e $< 3\text{s}$) \\
 Exportação Documental & OpenPDF (PDF), Apache POI (Excel) e CSV UTF-8 & RF-010 (Exportação em PDF, CSV e Excel) \\
 Cache e Agendamento & Spring Cache + \texttt{@Scheduled} & RNF-001, RNF-002, RF-011 e RNF-007 \\
 \bottomrule
@@ -146,7 +147,7 @@ O Diagrama de Contêineres na Figura 2 detalha a arquitetura monolítica em trê
 
 \subsection{Nível 3: Diagrama de Componentes}
 
-O Diagrama de Componentes na Figura 3 apresenta a divisão interna do servidor Back-End em pacotes coesos: os controladores REST (\texttt{AuthController} e \texttt{FinFamilyController}), os componentes de segurança (\texttt{JwtAuthenticationFilter}, \texttt{JwtTokenProvider} e \texttt{AesAttributeConverter}), os serviços de domínio (\texttt{FinanceiroService}, \texttt{AssistenteIAService}, \texttt{ExportacaoBackupService}, \texttt{AuthService} e \texttt{AuditLogService}) e as doze interfaces \texttt{JpaRepository}.
+O Diagrama de Componentes na Figura 3 apresenta a divisão interna do servidor Back-End em pacotes coesos: os controladores REST (\texttt{AuthController} e \texttt{FinFamilyController}), os componentes de segurança (\texttt{SecurityConfig}, que define as regras de acesso por perfil; \texttt{JwtAuthenticationFilter} e \texttt{JwtTokenProvider}, que validam o token; \texttt{ControleAcesso}, que confere se cada registro pertence ao grupo do usuário; e \texttt{AesAttributeConverter}), os serviços de domínio (\texttt{FinanceiroService}, \texttt{AssistenteIAService} com o \texttt{ClienteLLM} que se comunica com o Gemini ou o Ollama, \texttt{ExportacaoBackupService}, \texttt{AuthService} e \texttt{AuditLogService}) e as doze interfaces \texttt{JpaRepository}.
 
 \begin{figure}[H]
     \centering
@@ -166,11 +167,11 @@ O Diagrama de Código na Figura 4 demonstra a rastreabilidade direta entre o Dia
 
 \section{Telas do Front-End em Execução (Item 13)}
 
-A interface do usuário foi desenvolvida em \textbf{React 18} com \textbf{TailwindCSS} no padrão \textit{Mobile-First} responsivo (RNF-005). As Figuras 5 a 14 apresentam as capturas de tela reais da aplicação em funcionamento integrada ao Back-End Spring Boot.
+A interface do usuário foi desenvolvida em \textbf{React 18} com \textbf{TailwindCSS} no padrão \textit{Mobile-First} responsivo (RNF-005). As Figuras 5 a 17 apresentam as capturas de tela reais da aplicação em funcionamento integrada ao Back-End Spring Boot.
 
 \subsection{Autenticação e Seleção de Perfis (RF-001 e OE4)}
 
-A tela de autenticação (Figura 5) permite o login com e-mail e senha (validada via hash BCrypt e emissão de token JWT), o cadastro de novas famílias e o acesso rápido aos quatro perfis de usuários (\texttt{TITULAR}, \texttt{MEMBRO}, \texttt{AUDITOR} e \texttt{SYSADMIN}).
+O sistema abre na tela de autenticação (Figura 5): nenhum dado é exibido sem login. O usuário entra com e-mail e senha (validada via hash BCrypt), recebe um token JWT e pode cadastrar uma nova família. Os botões dos quatro perfis de demonstração (\texttt{TITULAR}, \texttt{MEMBRO}, \texttt{AUDITOR} e \texttt{SYSADMIN}) apenas preenchem o e-mail, sendo sempre exigida a senha. A sessão é mantida separadamente em cada aba do navegador.
 
 \begin{figure}[H]
     \centering
@@ -180,7 +181,7 @@ A tela de autenticação (Figura 5) permite o login com e-mail e senha (validada
 
 \subsection{Painel Principal, Dashboards e Assistente Conversacional com IA (RF-009, RF-012 e RN-006)}
 
-A tela inicial (Figura 6) reúne no topo o \textbf{Assistente Conversacional com IA (RF-012)}, com suporte a entrada por texto e reconhecimento de voz nativo. Ao interpretar o comando \textit{``Registrar gasto de R\$ 45,90 na padaria hoje no cartão de crédito''}, o sistema exibe o \textbf{Card de Confirmação Editável}, atendendo estritamente à \textbf{RN-006} (nada é gravado sem a confirmação explícita do usuário) e ao \textbf{RNF-004} (nenhum saldo ou CPF é enviado ao modelo de IA). Logo abaixo, os indicadores consolidam o Patrimônio Líquido Familiar (ocultando contas privadas conforme a \textbf{RN-001}), a evolução patrimonial de 6 meses e o progresso dos orçamentos.
+A tela inicial (Figura 6) reúne no topo o \textbf{Assistente Conversacional com IA (RF-012)}, com suporte a entrada por texto e reconhecimento de voz nativo. Ao interpretar o comando \textit{``Registrar gasto de R\$ 45,90 na padaria hoje no cartão de crédito''}, o texto é enviado ao modelo de linguagem, que devolve a intenção e os campos em JSON; o sistema então exibe o \textbf{Card de Confirmação Editável}, identificando o serviço e o modelo que interpretaram o comando (na Figura 6, \texttt{GEMINI} com o modelo \texttt{gemini-3.5-flash-lite}), atendendo estritamente à \textbf{RN-006} (nada é gravado sem a confirmação explícita do usuário) e ao \textbf{RNF-004} (nenhum saldo ou CPF é enviado ao modelo de IA). Logo abaixo, os indicadores consolidam o Patrimônio Líquido Familiar (ocultando contas privadas conforme a \textbf{RN-001}), a evolução patrimonial de 6 meses e o progresso dos orçamentos.
 
 \begin{figure}[H]
     \centering
@@ -190,12 +191,12 @@ A tela inicial (Figura 6) reúne no topo o \textbf{Assistente Conversacional com
 
 \subsection{Validação da Meta OE5: Bateria de 50 Comandos de Teste da IA}
 
-Conforme definido na Seção 11.4 da Unidade I e na meta \textbf{OE5}, o sistema inclui um painel de aferição que executa 50 comandos de teste em linguagem natural (25 comandos de registro e 25 comandos de consulta). Como ilustrado na Figura 7, o motor híbrido atinge \textbf{100\% de acerto (50 de 50 comandos)} com tempo médio de resposta inferior a 10 milissegundos (cumprindo com folga a meta $\ge 80\%$ e tempo $< 3\text{s}$).
+Conforme definido na Seção 11.4 da Unidade I e na meta \textbf{OE5}, o sistema inclui um painel de aferição que executa 50 comandos de teste em linguagem natural (25 comandos de registro e 25 comandos de consulta). O painel informa, para cada comando, o resultado (OK ou ERRO), o tempo e o serviço que o interpretou. Na execução da Figura 7, os \textbf{50 comandos foram interpretados corretamente (100\%)}, com tempo médio de 610 ms: 24 foram respondidos pelo Google Gemini dentro do limite de 3 segundos e 26 pelo motor local de contingência, acionado quando o serviço de IA excedeu o tempo ou recusou a requisição por excesso de demanda no plano gratuito (Seção 11.3 da Unidade I). A meta $\ge 80\%$ com tempo $< 3\text{s}$ foi atingida; em produção, um plano pago ou um modelo local (Ollama) reduz o uso da contingência.
 
 \begin{figure}[H]
     \centering
     \includegraphics[width=0.95\textwidth]{figuras/tela_03_benchmark_ia_50.png}
-    \caption{Execução dos 50 Comandos de Teste do Assistente de IA com 100\% de Precisão (Meta OE5)}
+    \caption{Execução dos 50 Comandos de Teste do Assistente de IA com o serviço que interpretou cada comando (Meta OE5)}
 \end{figure}
 
 \subsection{Gestão de Contas e Cartões (RF-002, OE1, RN-001 e RN-002)}
@@ -250,7 +251,7 @@ O módulo de investimentos (Figura 12) acompanha a posição consolidada por \te
 
 \subsection{Gestão do Grupo Familiar e Permissões (RF-007 e OE4)}
 
-A tela do grupo familiar (Figura 13) implementa o fluxo BPMN de inclusão de membro: o titular envia o convite definindo o papel (\texttt{TITULAR}, \texttt{MEMBRO} ou \texttt{AUDITOR}), o convidado aceita ou recusa, e o titular pode suspender ou reativar membros a qualquer momento.
+A tela do grupo familiar (Figura 13) implementa o fluxo BPMN de inclusão de membro: o titular envia o convite definindo o papel (\texttt{MEMBRO} ou \texttt{AUDITOR}) e pode suspender ou reativar membros a qualquer momento. A resposta ao convite é feita pelo próprio convidado, na tela apresentada na Seção \ref{sec:convite}.
 
 \begin{figure}[H]
     \centering
@@ -266,6 +267,53 @@ O painel de governança e segurança (Figura 14) disponibiliza ao usuário a por
     \centering
     \includegraphics[width=0.95\textwidth]{figuras/tela_10_seguranca_lgpd_sysadmin.png}
     \caption{Painel de Conformidade LGPD, Backup Diário (RNF-007) e Auditoria Técnica Sysadmin (UC13)}
+\end{figure}
+
+\subsection{Controle de Acesso por Perfil (RF-001, OE4 e Seção 2.9)}
+
+As permissões de cada perfil são garantidas pelo servidor: toda requisição sem token recebe a resposta 401 e toda operação não permitida ao perfil recebe a resposta 403. A interface acompanha essas regras e exibe a cada perfil apenas as ações que ele pode executar, substituindo os formulários por um aviso explicativo. A Tabela \ref{tab:permissoes} resume as permissões.
+
+\begin{table}[H]
+\centering
+\caption{Permissões por perfil garantidas pelo Back-End}
+\label{tab:permissoes}
+\vspace{0.2cm}
+\begin{tabular}{p{2.6cm}p{12.2cm}}
+\toprule
+\textbf{Perfil} & \textbf{O que pode fazer} \\
+\midrule
+Titular & Acesso total ao próprio grupo: contas, categorias e tags, orçamentos, membros, investimentos, transações, importação, assistente de IA e exportação. \\
+Membro & Lê os dados do grupo, lança transações, importa extratos, usa o assistente de IA e exporta relatórios; exclui apenas as transações que ele mesmo lançou. \\
+Auditor & Somente leitura dos painéis e relatórios do grupo, sem gravar nem exportar dados. \\
+Sysadmin & Somente logs técnicos (UC13) e backup (RNF-007), sem acesso a dados financeiros. \\
+Convidado & Apenas responde ao próprio convite; os dados do grupo ficam disponíveis após o aceite. \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+As Figuras 15 e 16 mostram a mesma aplicação vista pelo Auditor, com acesso somente de leitura, e pelo Membro, que acompanha os orçamentos sem poder alterá-los.
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.95\textwidth]{figuras/tela_11_auditor_somente_leitura.png}
+    \caption{Perfil Auditor: contas visíveis, cadastro e alterações bloqueados (OE4)}
+\end{figure}
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.95\textwidth]{figuras/tela_12_membro_permissoes.png}
+    \caption{Perfil Membro: acompanha as metas de orçamento definidas pelo Titular (Seção 2.9)}
+\end{figure}
+
+\subsection{Resposta ao Convite pelo Próprio Convidado (RF-007 e BPMN Figura 2)}
+\label{sec:convite}
+
+Seguindo o fluxo BPMN de inclusão de membro, o convidado que ainda não aceitou o convite não visualiza os dados do grupo. Ao entrar no sistema, ele vê a tela da Figura 17, onde aceita ou recusa o convite; após o aceite, um novo login libera o acesso de acordo com o papel definido pelo titular.
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.95\textwidth]{figuras/tela_13_convite_membro.png}
+    \caption{Tela de Convite: o convidado aceita ou recusa a participação no grupo familiar (RF-007)}
 \end{figure}
 
 \section{Código-Fonte do Servidor Back-End em Java (Item 14)}
@@ -374,6 +422,37 @@ if ("registrar".equalsIgnoreCase(comando.getIntencao())) {
 }
 \end{lstlisting}
 
+\subsection{Serviços: Integração com o Modelo de Linguagem (RF-012, Seções 11.2 e 11.3)}
+
+No \texttt{AssistenteIAService.java}, o comando do usuário é enviado ao modelo de linguagem pelo \texttt{ClienteLLM.java}, que se comunica com o Google Gemini ou com o Ollama local. A resposta em JSON é convertida em um \texttt{Comando} com valor, descrição, data, conta, categoria, parcelas e período. Se o serviço de IA estiver indisponível, exceder 3 segundos ou devolver uma resposta inválida, o motor local assume como contingência e a interface informa o usuário:
+
+\begin{lstlisting}[caption={Fluxo de interpretação com o modelo de linguagem e contingência (AssistenteIAService.java)}]
+String promptSeguro = montarPromptSeguroRnf004(texto, contas, categorias);
+
+Comando comando = clienteLLM.gerarJson(promptSeguro)
+        .map(r -> converterRespostaLLM(r.json(), r.provedor(), texto, contas, categorias))
+        .orElse(null);
+
+if (comando == null) {
+    comando = interpretarMotorNlpHibrido(texto, contas, categorias);
+    comando.setProvedorIA(PROVEDOR_CONTINGENCIA);
+}
+\end{lstlisting}
+
+\subsection{Segurança: Regras de Acesso por Perfil (RF-001 e OE4)}
+
+A classe \texttt{SecurityConfig.java} exige o token JWT em toda a API e define o que cada perfil pode acessar. A classe \texttt{ControleAcesso.java} complementa essas regras verificando se o registro solicitado pertence ao grupo familiar do usuário, cujo identificador é lido do próprio token:
+
+\begin{lstlisting}[caption={Regras de acesso por perfil (SecurityConfig.java)}]
+.requestMatchers(HttpMethod.POST, "/api/auth/login", "/api/auth/register").permitAll()
+.requestMatchers("/api/sysadmin/**").hasRole(SYSADMIN)
+.requestMatchers(HttpMethod.GET, "/api/exportacao/**").hasAnyRole(TITULAR, MEMBRO)
+.requestMatchers(HttpMethod.GET, "/api/**").hasAnyRole(TITULAR, MEMBRO, AUDITOR)
+.requestMatchers(HttpMethod.POST, "/api/transacoes", "/api/importacao/**",
+        "/api/assistente/**").hasAnyRole(TITULAR, MEMBRO)
+.requestMatchers("/api/**").hasRole(TITULAR)
+\end{lstlisting}
+
 \subsection{Criptografia AES-256-GCM em Repouso (RNF-003)}
 
 Para atender ao \textbf{RNF-003}, a classe \texttt{AesAttributeConverter.java} implementa a interface \texttt{AttributeConverter<String, String>} do Jakarta Persistence, aplicando criptografia autenticada \texttt{AES/GCM/NoPadding} com chave de 256 bits e vetor de inicialização (IV) aleatório de 12 bytes a cada gravação:
@@ -398,7 +477,7 @@ public class AesAttributeConverter implements AttributeConverter<String, String>
 
 \section{Validação Automatizada e Cumprimento das Metas (OE1 a OE6)}
 
-A suíte de testes automatizados (\texttt{FinFamilySystemTests.java} e \texttt{FinFamilyApiAndPerformanceTests.java}) foi executada via Maven Surefire + JUnit 5, obtendo \textbf{100\% de aprovação (11 suítes de teste, 0 falhas e 0 erros)}. A Tabela 2 sintetiza os resultados obtidos frente às metas estabelecidas na Tabela 2 da Unidade I.
+A suíte de testes automatizados foi executada via Maven Surefire + JUnit 5 (\texttt{mvnw.cmd test}), obtendo \textbf{100\% de aprovação: 33 testes, 0 falhas e 0 erros}, distribuídos em \texttt{FinFamilySystemTests} (regras de negócio), \texttt{FinFamilyApiAndPerformanceTests} (API e latência), \texttt{AssistenteIALlmTests} e \texttt{ClienteLLMTests} (integração com o modelo de linguagem e contingência) e \texttt{ControleAcessoTests} (12 cenários de permissão por perfil e isolamento entre grupos). A Tabela 2 sintetiza os resultados obtidos frente às metas estabelecidas na Tabela 2 da Unidade I.
 
 \begin{table}[H]
 \centering
@@ -411,8 +490,8 @@ A suíte de testes automatizados (\texttt{FinFamilySystemTests.java} e \texttt{F
 OE1 & Centralizar as contas da família em uma única tela. & 4 tipos (corrente, poupança, cartão e corretora). & \textbf{Atendido (100\%):} 4 tipos implementados e validados. \\
 OE2 & Importar extratos sem duplicar lançamentos. & 0 duplicidades ao importar o mesmo arquivo 2x. & \textbf{Atendido (100\%):} 0 duplicidades com conciliação SHA-256. \\
 OE3 & Controlar o orçamento com alertas. & Alertas em 80\% e 100\% em 100\% dos testes. & \textbf{Atendido (100\%):} Gatilhos validados em 100\% dos casos. \\
-OE4 & Permitir a colaboração da família com segurança. & 3 perfis familiares + Sysadmin. & \textbf{Atendido (100\%):} Perfis Titular, Membro, Auditor e Sysadmin. \\
-OE5 & Agilizar lançamentos e consultas com assistente IA. & $\ge 80\%$ em 50 comandos de teste ($< 3\text{s}$). & \textbf{Superado (100\%):} 50/50 comandos corretos em $< 10\text{ms}$. \\
+OE4 & Permitir a colaboração da família com segurança. & 3 perfis familiares + Sysadmin. & \textbf{Atendido (100\%):} Titular, Membro, Auditor e Sysadmin com permissões garantidas no Back-End (12 testes). \\
+OE5 & Agilizar lançamentos e consultas com assistente IA. & $\ge 80\%$ em 50 comandos de teste ($< 3\text{s}$). & \textbf{Atendido:} 50/50 corretos, média de 610 ms; 24 pelo Gemini e 26 pela contingência. \\
 OE6 & Entregar o produto mínimo viável (MVP). & 12 de 12 requisitos funcionais testados. & \textbf{Atendido (100\%):} 12 RFs, 6 RNs e 7 RNFs concluídos. \\
 \bottomrule
 \end{tabular}
@@ -420,7 +499,7 @@ OE6 & Entregar o produto mínimo viável (MVP). & 12 de 12 requisitos funcionais
 
 \section{Conclusão}
 
-O desenvolvimento da Unidade II consolidou na prática toda a engenharia de requisitos e a modelagem elaboradas na Unidade I. A adoção de uma arquitetura limpa em três camadas com \textbf{Java 21 + Spring Boot 3} no servidor, \textbf{React + TailwindCSS} na interface web e banco relacional permitiu entregar os doze requisitos funcionais, as seis regras de negócio e os sete requisitos não funcionais dentro do cronograma planejado, garantindo segurança criptográfica AES-256, conformidade com a LGPD e uma experiência fluida de lançamento e consulta por linguagem natural com Inteligência Artificial.
+O desenvolvimento da Unidade II consolidou na prática toda a engenharia de requisitos e a modelagem elaboradas na Unidade I. A adoção de uma arquitetura limpa em três camadas com \textbf{Java 21 + Spring Boot 3} no servidor, \textbf{React + TailwindCSS} na interface web e banco relacional permitiu entregar os doze requisitos funcionais, as seis regras de negócio e os sete requisitos não funcionais dentro do cronograma planejado, garantindo segurança criptográfica AES-256, controle de acesso por perfil validado no servidor, conformidade com a LGPD e uma experiência fluida de lançamento e consulta por linguagem natural com um modelo de Inteligência Artificial, com contingência local quando o serviço externo está indisponível.
 
 \section*{Referências}
 

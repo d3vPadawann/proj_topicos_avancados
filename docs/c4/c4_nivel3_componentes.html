@@ -152,8 +152,8 @@ body {
           </div>
           <div class="box component-box">
             <span class="tag">[Security Component]</span>
-            <div class="title">JwtAuthenticationFilter & JwtTokenProvider</div>
-            <div class="desc">Autenticação Stateless JWT e controle de perfil Titular, Membro, Auditor e Sysadmin (OE4).</div>
+            <div class="title">SecurityConfig, JWT & ControleAcesso</div>
+            <div class="desc">Exige o token JWT em toda a API (401/403), aplica as regras por perfil Titular, Membro, Auditor, Sysadmin e Convidado (OE4) e confere se cada registro pertence ao grupo do usuário.</div>
           </div>
           <div class="box component-box">
             <span class="tag">[JPA AttributeConverter]</span>
@@ -174,9 +174,9 @@ body {
             <div class="desc">Implementa RN-001 (privacidade), RN-002 (exclusão saldo 0), RN-003 (parcelamento), RN-004 (alertas 80%/100%), RN-005 (proventos) e conciliação CSV SHA-256.</div>
           </div>
           <div class="box component-box" style="background:#eef2ff; border-color:#4f46e5;">
-            <span class="tag">[Service • AI & NLP]</span>
-            <div class="title">AssistenteIAService</div>
-            <div class="desc">Implementa interpretar() e executar() (Figura 5), aplica RN-006 (confirmação do card), protege dados RNF-004 e executa os 50 testes da Meta OE5.</div>
+            <span class="tag">[Service • IA com LLM]</span>
+            <div class="title">AssistenteIAService & ClienteLLM</div>
+            <div class="desc">Monta o prompt seguro (RNF-004), envia ao Gemini ou Ollama e converte o JSON em Comando; aplica RN-006 e usa o motor local só como contingência (Seção 11.3).</div>
           </div>
           <div class="box component-box" style="background:#eef2ff; border-color:#4f46e5;">
             <span class="tag">[Service • Reports & DR]</span>
