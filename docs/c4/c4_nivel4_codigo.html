@@ -246,12 +246,13 @@ body {
           <div>- requerConfirmacao: Boolean [RN-006]</div>
         </div>
         <div class="box code-box">
-          <div class="cls-title">«service» AssistenteIAService</div>
-          <div>- urlApi: String | timeoutMs: 2800</div>
+          <div class="cls-title">«service» AssistenteIAService + ClienteLLM</div>
+          <div>- provedor: AUTO|GEMINI|OLLAMA|LOCAL</div>
+          <div>- timeoutMs: 2800 (Seção 11.3)</div>
           <hr style="margin:4px 0"/>
           <div>+ interpretar(grupoId, texto): Comando</div>
           <div>+ executar(grupoId, cmd, confirmado): Map</div>
-          <div>+ executarBateria50ComandosTeste(): Map</div>
+          <div>+ gerarJson(prompt): RespostaLLM</div>
         </div>
       </div>
     </div>

@@ -1,6 +1,8 @@
+// endpoints de login, cadastro e LGPD
 package br.ucsal.finfamily.controller;
 
 import br.ucsal.finfamily.domain.model.Usuario;
+import br.ucsal.finfamily.security.ControleAcesso;
 import br.ucsal.finfamily.service.AuthService;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -8,17 +10,15 @@ import org.springframework.web.bind.annotation.*;
 import java.util.List;
 import java.util.Map;
 
-/**
- * Controller REST para Autenticacao e Gestao de Sessao (RF-001) e Conformidade LGPD (RNF-004).
- */
 @RestController
 @RequestMapping("/api/auth")
 public class AuthController {
-
     private final AuthService authService;
+    private final ControleAcesso controleAcesso;
 
-    public AuthController(AuthService authService) {
+    public AuthController(AuthService authService, ControleAcesso controleAcesso) {
         this.authService = authService;
+        this.controleAcesso = controleAcesso;
     }
 
     @PostMapping("/login")
@@ -43,19 +43,15 @@ public class AuthController {
         return ResponseEntity.ok(authService.listarUsuariosDemo());
     }
 
-    /**
-     * RNF-004 (LGPD): Portabilidade de Dados Pessoais (Download em formato JSON).
-     */
     @GetMapping("/lgpd/export/{usuarioId}")
     public ResponseEntity<Map<String, Object>> exportarDadosLgpd(@PathVariable Long usuarioId) {
+        controleAcesso.exigirProprioUsuario(usuarioId);
         return ResponseEntity.ok(authService.exportarDadosLGPD(usuarioId));
     }
 
-    /**
-     * RNF-004 (LGPD): Direito ao Esquecimento (Exclusao irreversivel de conta).
-     */
     @DeleteMapping("/lgpd/delete/{usuarioId}")
     public ResponseEntity<Map<String, Object>> excluirContaLgpd(@PathVariable Long usuarioId) {
+        controleAcesso.exigirProprioUsuario(usuarioId);
         return ResponseEntity.ok(authService.excluirContaIrreversivelLGPD(usuarioId));
     }
 }

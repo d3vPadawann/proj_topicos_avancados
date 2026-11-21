@@ -1,0 +1,3 @@
+# exemplo de configuracao da IA (copie para ia.properties)
+finfamily.ai.provedor=GEMINI
+finfamily.ai.gemini-api-key=COLE_SUA_CHAVE_AQUI

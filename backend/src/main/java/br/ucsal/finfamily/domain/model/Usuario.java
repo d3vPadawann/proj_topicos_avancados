@@ -1,3 +1,4 @@
+// entidade usuario
 package br.ucsal.finfamily.domain.model;
 
 import br.ucsal.finfamily.domain.enums.PapelFamiliar;
@@ -6,13 +7,9 @@ import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
 import java.time.LocalDateTime;
 
-/**
- * Entidade Usuario conforme Diagrama de Classes (Figura 5) e RF-001.
- */
 @Entity
 @Table(name = "usuarios")
 public class Usuario {
-
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
@@ -27,9 +24,7 @@ public class Usuario {
     @Column(nullable = false)
     private String senhaHash;
 
-    /**
-     * Dado sensivel criptografado com AES-256-GCM em repouso (RNF-003).
-     */
+    @JsonIgnore
     @Convert(converter = AesAttributeConverter.class)
     private String documentoSensivel;
 
@@ -55,9 +50,6 @@ public class Usuario {
         this.criadoEm = LocalDateTime.now();
     }
 
-    /**
-     * Metodo do Diagrama de Classes (Figura 5): autenticar(email, senha): Boolean
-     */
     public Boolean autenticar(String emailInformado, boolean senhaCorreta) {
         return Boolean.TRUE.equals(this.ativo)
                 && this.email != null

@@ -1,3 +1,4 @@
+// geracao e validacao do token JWT
 package br.ucsal.finfamily.security;
 
 import br.ucsal.finfamily.domain.enums.PapelFamiliar;
@@ -11,12 +12,8 @@ import javax.crypto.SecretKey;
 import java.nio.charset.StandardCharsets;
 import java.util.Date;
 
-/**
- * Provedor de Tokens JWT com assinatura HMAC-SHA256 e payload protegido (RF-001, RNF-003).
- */
 @Component
 public class JwtTokenProvider {
-
     @Value("${finfamily.security.jwt-secret:FinFamilyUCSAL2026TopicosAvancadosChaveSecretaSuperSegura256Bits!}")
     private String jwtSecret;
 
@@ -29,6 +26,10 @@ public class JwtTokenProvider {
     }
 
     public String gerarToken(Long usuarioId, String email, String nome, PapelFamiliar papel, Long grupoId) {
+        return gerarToken(usuarioId, email, nome, papel, grupoId, "ATIVO");
+    }
+
+    public String gerarToken(Long usuarioId, String email, String nome, PapelFamiliar papel, Long grupoId, String statusMembro) {
         Date agora = new Date();
         Date expiracao = new Date(agora.getTime() + jwtExpirationMs);
 
@@ -38,6 +39,7 @@ public class JwtTokenProvider {
                 .claim("nome", nome)
                 .claim("papel", papel != null ? papel.name() : PapelFamiliar.MEMBRO.name())
                 .claim("grupoId", grupoId != null ? grupoId : 1L)
+                .claim("status", statusMembro != null ? statusMembro : "ATIVO")
                 .claim("tokenCriptografado", AesAttributeConverter.encrypt(email + ":" + usuarioId))
                 .issuedAt(agora)
                 .expiration(expiracao)
