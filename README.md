@@ -3,7 +3,9 @@
 **Universidade Católica do Salvador (UCSAL)**  
 **Bacharelado em Engenharia de Software — Tópicos Avançados em Programação**  
 **Professor Orientador:** Prof. Msc. Elton Figueiredo da Silva  
-**Equipe:** Matheus Ramos de Oliveira, Alexandre Villarino e Silva, Eduardo Rocha Santos, Daniel Teixeira Melo, Marcos Vinicius Sousa Batista  
+**Equipe:** Matheus Ramos de Oliveira, Alexandre Villarino e Silva, Eduardo Rocha Santos, Daniel Teixeira Melo, Marcos Vinicius Sousa Batista, Vinicius Freitas de Oliveira Souza  
+**Papéis Scrum:** ScrumMaster — Matheus Ramos de Oliveira; Desenvolvedores — Alexandre Villarino e Silva, Daniel Teixeira Melo, Eduardo Rocha Santos, Marcos Vinicius Sousa Batista e Vinicius Freitas de Oliveira Souza  
+**Gestão do projeto (Trello):** https://trello.com/b/EwMCmp64  
 
 ---
 

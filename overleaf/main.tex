@@ -22,6 +22,7 @@
 \author[1]{Eduardo Rocha Santos \thanks{eduardorocha.santos@ucsal.edu.br}}
 \author[1]{Daniel Teixeira Melo \thanks{danielteixeira.melo@ucsal.edu.br}}
 \author[1]{Marcos Vinicius Sousa Batista \thanks{marcos.batista@ucsal.edu.br}}
+\author[1]{Vinicius Freitas de Oliveira Souza \thanks{viniciusfreitas.souza@ucsal.edu.br}}
 \author[1*]{Elton Figueiredo da Silva \thanks{elton.figueiredo@pro.ucsal.edu.br}}
 
 \affil{
@@ -31,7 +32,7 @@ Universidade Católica do Salvador (UCSAL) \par
 Av. Prof. Pinto de Aguiar, 2589 Pituaçu, CEP: 41740-090 \par
 Salvador/BA, Brasil
 }
-\affil[1]{\textit {\{matheusramos.oliveira, alexandrevillarino.silva, eduardorocha.santos, danielteixeira.melo, marcos.batista\}@ucsal.edu.br}}
+\affil[1]{\textit {\{matheusramos.oliveira, alexandrevillarino.silva, eduardorocha.santos, danielteixeira.melo, marcos.batista, viniciusfreitas.souza\}@ucsal.edu.br}}
 \affil[1*]{\textit {elton.figueiredo@pro.ucsal.edu.br}}
 
 \date{Novembro 2026}
@@ -109,9 +110,9 @@ Este artigo documenta a Unidade II, dedicada à implementação, e está organiz
 \section{Gestão do Projeto}
 \label{sec:gestao}
 
-O projeto foi conduzido com o framework Scrum \cite{schwaber2020}, em quatro sprints de duas semanas, conforme o cronograma da Unidade I. As tarefas foram acompanhadas em um quadro Kanban no Trello, disponível em \textbf{[inserir link do quadro do Trello]}. Os papéis da equipe foram distribuídos da seguinte forma: Product Owner, \textbf{[nome]}; ScrumMaster, \textbf{[nome]}; e desenvolvedores, \textbf{[nomes]}.
+O projeto foi conduzido com o framework Scrum \cite{schwaber2020}, em quatro sprints de duas semanas, conforme o cronograma da Unidade I. As tarefas foram acompanhadas em um quadro Kanban no Trello, disponível em \url{https://trello.com/b/EwMCmp64}. Os papéis da equipe foram distribuídos da seguinte forma: ScrumMaster, Matheus Ramos de Oliveira; e desenvolvedores, Alexandre Villarino e Silva, Daniel Teixeira Melo, Eduardo Rocha Santos, Marcos Vinicius Sousa Batista e Vinicius Freitas de Oliveira Souza.
 
-Cada funcionalidade foi desenvolvida em uma branch própria e incorporada à branch principal por meio de \textit{pull request} revisado por outro integrante, o que deixa registrado no repositório o histórico de contribuições da equipe.
+O código foi versionado com Git no GitHub, na branch principal (\textit{main}). A integração com o modelo de linguagem e o controle de acesso por perfil foram desenvolvidos na branch \textit{feat/ia-e-controle-de-acesso} e incorporados à branch principal por meio de \textit{pull request}, o que deixa registrado no repositório o histórico de contribuições da equipe.
 
 \section{Repositório Versionado e Tecnologias (Item 11)}
 \label{sec:repositorio}
@@ -145,7 +146,7 @@ Exportação & OpenPDF, Apache POI e CSV & RF-010 \\
 Cache e agendamento & Spring Cache e \texttt{@Scheduled} & RNF-001, RNF-002, RF-011, RNF-007 \\
 \bottomrule
 \end{tabularx}
-\fonte{Os autores (2026).}
+\fonte{Autoria própria (2026).}
 \end{table}
 
 \section{Modelo C4 (Item 12)}
@@ -160,7 +161,7 @@ O diagrama de contexto (Figura \ref{fig:c4-1}) apresenta o FinFamily e suas inte
     \caption{Modelo C4 -- Nível 1: diagrama de contexto}
     \label{fig:c4-1}
     \includegraphics[width=\textwidth]{figuras/c4_nivel1_contexto.png}
-    \fonte{Os autores (2026).}
+    \fonte{Autoria própria (2026).}
 \end{figure}
 
 O diagrama de contêineres (Figura \ref{fig:c4-2}) detalha a arquitetura em três camadas da Seção 2.5 da Unidade I: a interface web executada no navegador, o servidor de aplicação com a API REST e o banco de dados relacional, além do armazenamento de backups diários (RNF-007).
@@ -170,7 +171,7 @@ O diagrama de contêineres (Figura \ref{fig:c4-2}) detalha a arquitetura em trê
     \caption{Modelo C4 -- Nível 2: diagrama de contêineres}
     \label{fig:c4-2}
     \includegraphics[width=\textwidth]{figuras/c4_nivel2_conteineres.png}
-    \fonte{Os autores (2026).}
+    \fonte{Autoria própria (2026).}
 \end{figure}
 
 O diagrama de componentes (Figura \ref{fig:c4-3}) mostra a divisão interna do servidor: os controladores REST; os componentes de segurança (\texttt{SecurityConfig}, com as regras por perfil; \texttt{JwtAuthenticationFilter} e \texttt{JwtTokenProvider}, que validam o token; \texttt{ControleAcesso}, que verifica se cada registro pertence ao grupo do usuário; e \texttt{AesAttributeConverter}); os serviços de domínio, entre eles o \texttt{AssistenteIAService} e o \texttt{ClienteLLM}, responsável pela comunicação com o modelo de linguagem; e os repositórios JPA.
@@ -180,7 +181,7 @@ O diagrama de componentes (Figura \ref{fig:c4-3}) mostra a divisão interna do s
     \caption{Modelo C4 -- Nível 3: diagrama de componentes do back-end}
     \label{fig:c4-3}
     \includegraphics[width=\textwidth]{figuras/c4_nivel3_componentes.png}
-    \fonte{Os autores (2026).}
+    \fonte{Autoria própria (2026).}
 \end{figure}
 
 O diagrama de código (Figura \ref{fig:c4-4}) relaciona o diagrama de classes da Unidade I às classes Java implementadas no pacote \texttt{br.ucsal.finfamily.domain.model}, mantendo os atributos, as enumerações e os métodos de negócio especificados.
@@ -190,7 +191,7 @@ O diagrama de código (Figura \ref{fig:c4-4}) relaciona o diagrama de classes da
     \caption{Modelo C4 -- Nível 4: diagrama de código}
     \label{fig:c4-4}
     \includegraphics[width=\textwidth]{figuras/c4_nivel4_codigo.png}
-    \fonte{Os autores (2026).}
+    \fonte{Autoria própria (2026).}
 \end{figure}
 
 \section{Telas do Front-End (Item 13)}
@@ -207,7 +208,7 @@ O sistema abre na tela de autenticação (Figura \ref{fig:login}) e não exibe d
     \caption{Tela de autenticação (RF-001)}
     \label{fig:login}
     \includegraphics[width=0.95\textwidth]{figuras/tela_01_login.png}
-    \fonte{Os autores (2026).}
+    \fonte{Autoria própria (2026).}
 \end{figure}
 
 \subsection{Painel principal e assistente conversacional}
@@ -219,7 +220,7 @@ A tela inicial (Figura \ref{fig:painel}) reúne o assistente conversacional (RF-
     \caption{Painel principal e card de confirmação montado pelo Google Gemini (RF-009, RF-012, RN-006)}
     \label{fig:painel}
     \includegraphics[width=0.95\textwidth]{figuras/tela_02_dashboard_ia.png}
-    \fonte{Os autores (2026).}
+    \fonte{Autoria própria (2026).}
 \end{figure}
 
 \subsection{Bateria de 50 comandos de teste (OE5)}
@@ -231,7 +232,7 @@ Conforme a Seção 11.4 da Unidade I, o sistema executa 50 comandos de teste em 
     \caption{Resultado dos 50 comandos de teste do assistente (OE5)}
     \label{fig:benchmark}
     \includegraphics[width=0.95\textwidth]{figuras/tela_03_benchmark_ia_50.png}
-    \fonte{Os autores (2026).}
+    \fonte{Autoria própria (2026).}
 \end{figure}
 
 \subsection{Contas e cartões}
@@ -243,7 +244,7 @@ O módulo de contas (Figura \ref{fig:contas}) reúne os quatro tipos de conta da
     \caption{Módulo de contas e cartões (RF-002, RN-001, RN-002)}
     \label{fig:contas}
     \includegraphics[width=0.95\textwidth]{figuras/tela_04_contas_cartoes.png}
-    \fonte{Os autores (2026).}
+    \fonte{Autoria própria (2026).}
 \end{figure}
 
 \subsection{Transações}
@@ -255,7 +256,7 @@ A tela de transações (Figura \ref{fig:transacoes}) permite registrar receitas,
     \caption{Módulo de transações com parcelamento automático (RF-003, RN-003)}
     \label{fig:transacoes}
     \includegraphics[width=0.95\textwidth]{figuras/tela_05_transacoes_parcelamento.png}
-    \fonte{Os autores (2026).}
+    \fonte{Autoria própria (2026).}
 \end{figure}
 
 \subsection{Importação de extratos CSV}
@@ -267,7 +268,7 @@ Seguindo o fluxo BPMN de importação e o caso de uso UC05, a tela de importaç�
     \caption{Importação de extratos CSV sem duplicidades (RF-005, OE2)}
     \label{fig:importacao}
     \includegraphics[width=0.95\textwidth]{figuras/tela_06_importacao_csv.png}
-    \fonte{Os autores (2026).}
+    \fonte{Autoria própria (2026).}
 \end{figure}
 
 \subsection{Orçamentos}
@@ -279,7 +280,7 @@ O módulo de orçamentos (Figura \ref{fig:orcamentos}) permite definir metas men
     \caption{Orçamentos mensais com alertas em 80\% e 100\% (RF-006, RN-004)}
     \label{fig:orcamentos}
     \includegraphics[width=0.95\textwidth]{figuras/tela_07_orcamentos_alertas.png}
-    \fonte{Os autores (2026).}
+    \fonte{Autoria própria (2026).}
 \end{figure}
 
 \subsection{Investimentos}
@@ -291,7 +292,7 @@ O módulo de investimentos (Figura \ref{fig:investimentos}) acompanha a posiçã
     \caption{Investimentos e registro de proventos como receita (RF-008, RN-005)}
     \label{fig:investimentos}
     \includegraphics[width=0.95\textwidth]{figuras/tela_08_investimentos_proventos.png}
-    \fonte{Os autores (2026).}
+    \fonte{Autoria própria (2026).}
 \end{figure}
 
 \subsection{Grupo familiar}
@@ -303,7 +304,7 @@ A tela do grupo familiar (Figura \ref{fig:grupo}) implementa o fluxo BPMN de inc
     \caption{Gestão do grupo familiar (RF-007, OE4)}
     \label{fig:grupo}
     \includegraphics[width=0.95\textwidth]{figuras/tela_09_grupo_familiar.png}
-    \fonte{Os autores (2026).}
+    \fonte{Autoria própria (2026).}
 \end{figure}
 
 \subsection{LGPD, backup e logs}
@@ -315,7 +316,7 @@ O painel de segurança (Figura \ref{fig:seguranca}) permite ao usuário baixar o
     \caption{Painel de LGPD, backup e logs técnicos visto pelo Administrador do Sistema (RNF-004, RNF-007, UC13)}
     \label{fig:seguranca}
     \includegraphics[width=0.95\textwidth]{figuras/tela_10_seguranca_lgpd_sysadmin.png}
-    \fonte{Os autores (2026).}
+    \fonte{Autoria própria (2026).}
 \end{figure}
 
 \subsection{Controle de acesso por perfil}
@@ -337,7 +338,7 @@ Administrador do Sistema & Somente logs técnicos e backup, sem acesso a dados f
 Convidado & Somente a resposta ao próprio convite. \\
 \bottomrule
 \end{tabularx}
-\fonte{Os autores (2026).}
+\fonte{Autoria própria (2026).}
 \end{table}
 
 \begin{figure}[H]
@@ -345,7 +346,7 @@ Convidado & Somente a resposta ao próprio convite. \\
     \caption{Perfil Auditor: acesso somente de leitura (OE4)}
     \label{fig:auditor}
     \includegraphics[width=0.95\textwidth]{figuras/tela_11_auditor_somente_leitura.png}
-    \fonte{Os autores (2026).}
+    \fonte{Autoria própria (2026).}
 \end{figure}
 
 \begin{figure}[H]
@@ -353,7 +354,7 @@ Convidado & Somente a resposta ao próprio convite. \\
     \caption{Perfil Membro: acompanhamento das metas definidas pelo Titular}
     \label{fig:membro}
     \includegraphics[width=0.95\textwidth]{figuras/tela_12_membro_permissoes.png}
-    \fonte{Os autores (2026).}
+    \fonte{Autoria própria (2026).}
 \end{figure}
 
 \subsection{Resposta ao convite}
@@ -366,7 +367,7 @@ Conforme o fluxo BPMN de inclusão de membro, o convidado que ainda não aceitou
     \caption{Tela de resposta ao convite (RF-007)}
     \label{fig:convite}
     \includegraphics[width=0.95\textwidth]{figuras/tela_13_convite_membro.png}
-    \fonte{Os autores (2026).}
+    \fonte{Autoria própria (2026).}
 \end{figure}
 
 \section{Código do Back-End (Item 14)}
@@ -492,7 +493,7 @@ OE5 & Assistente de IA & $\ge$ 80\% de 50 comandos em menos de 3 s & Atendido: 5
 OE6 & Entregar o MVP & 12 requisitos funcionais & Atendido: 12 RFs, 6 RNs e 7 RNFs implementados \\
 \bottomrule
 \end{tabularx}
-\fonte{Os autores (2026).}
+\fonte{Autoria própria (2026).}
 \end{table}
 
 \section{Vídeos Individuais (Item 15)}
@@ -513,9 +514,10 @@ Alexandre Villarino e Silva & \textbf{[inserir link]} \\
 Eduardo Rocha Santos & \textbf{[inserir link]} \\
 Daniel Teixeira Melo & \textbf{[inserir link]} \\
 Marcos Vinicius Sousa Batista & \textbf{[inserir link]} \\
+Vinicius Freitas de Oliveira Souza & \textbf{[inserir link]} \\
 \bottomrule
 \end{tabularx}
-\fonte{Os autores (2026).}
+\fonte{Autoria própria (2026).}
 \end{table}
 
 \section{Conclusão}

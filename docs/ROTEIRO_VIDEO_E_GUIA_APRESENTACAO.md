@@ -3,7 +3,9 @@
 **Projeto:** FinFamily — Sistema de Gestão Financeira e Controle de Investimentos Familiar  
 **Disciplina:** Tópicos Avançados em Programação — UCSAL  
 **Professor:** Msc. Elton Figueiredo da Silva  
-**Equipe:** Matheus Ramos de Oliveira, Alexandre Villarino e Silva, Eduardo Rocha Santos, Daniel Teixeira Melo, Marcos Vinicius Sousa Batista  
+**Equipe:** Matheus Ramos de Oliveira, Alexandre Villarino e Silva, Eduardo Rocha Santos, Daniel Teixeira Melo, Marcos Vinicius Sousa Batista, Vinicius Freitas de Oliveira Souza  
+**Papéis Scrum:** ScrumMaster — Matheus Ramos de Oliveira; Desenvolvedores — Alexandre Villarino e Silva, Daniel Teixeira Melo, Eduardo Rocha Santos, Marcos Vinicius Sousa Batista e Vinicius Freitas de Oliveira Souza  
+**Gestão do projeto (Trello):** https://trello.com/b/EwMCmp64  
 
 ---
 
@@ -42,7 +44,7 @@ Cada integrante deve gravar seu vídeo individual (OBS Studio, Loom ou gravador 
    - Na tela inicial, clicar ou digitar: `"Registrar gasto de R$ 45,90 na padaria hoje no cartão de crédito"`.
    - Mostrar que o sistema **não grava direto**: ele exibe o **Card de Confirmação Editável (RN-006)** e informa que nenhum saldo ou CPF foi enviado à IA (**RNF-004**). Clicar em **"Confirmar e Gravar Lançamento"**.
    - Em seguida, perguntar: `"Quanto eu já gastei com Uber este mês?"` e mostrar que o próprio FinFamily filtra e calcula o total no banco local.
-   - Clicar no botão **"Testar 50 Comandos IA (Meta OE5)"** e mostrar os **50 comandos (25 registros + 25 consultas)** atingindo **100% de acerto** (acima da meta de 80%) com tempo médio inferior a 10ms (abaixo do limite de 3 segundos).
+   - Clicar no botão **"Testar 50 Comandos IA (Meta OE5)"** e mostrar os **50 comandos (25 registros + 25 consultas)** atingindo **100% de acerto** (acima da meta de 80%) com tempo médio de 610 ms (abaixo do limite de 3 segundos): 24 comandos interpretados pelo Google Gemini e 26 pelo motor local de contingência, acionado quando o serviço externo excedeu o tempo ou o limite de uso do plano gratuito.
 2. **Contas, Privacidade e Exclusão (RF-002, OE1, RN-001, RN-002):**
    - Mostrar os 4 tipos de conta (`CORRENTE`, `POUPANCA`, `CARTAO_CREDITO`, `CORRETORA`).
    - Mostrar o `Cartão Universitário do Filho (Privado)` que possui a flag `Privada` (**RN-001**) e não entra no Patrimônio Líquido Global da família.
